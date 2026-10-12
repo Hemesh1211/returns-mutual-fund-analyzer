@@ -103,18 +103,6 @@ Make sure `index.html`, `styles.css`, `data.js`, and `app.js` remain in the same
 
 ---
 
-## 🌍 Deploy for Free with GitHub Pages
-
-You can host this static website for free using **GitHub Pages**—no backend server is required.
-
-1. 🆕 Create a GitHub repository named `returns-mutual-fund-analyzer`.
-2. 📤 Upload all project files to the repository's **root**.
-3. ⚙️ Open **Settings → Pages**.
-4. 🏗️ Under the build and deployment options, choose **Deploy from a branch**.
-5. 🌿 Select the `main` branch and `/(root)`, then click **Save**.
-6. ⏳ Wait for GitHub Pages to finish publishing the site.
-
-Your website URL will look like this:
 
 <div align="center">
 
