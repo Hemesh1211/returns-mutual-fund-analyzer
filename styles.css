@@ -3875,9 +3875,10 @@ body { background: var(--bg-primary) !important; background-image: none !importa
 .footer { border-top: 1px solid var(--border-color); color: var(--text-muted); }
 :where(a,button,input,select,textarea,[tabindex]):focus-visible { outline-color: var(--accent-indigo); }
 @media (max-width: 1050px) {
-  .nav-container { flex-wrap: nowrap; }
-  .nav-links { order: 0; width: auto; justify-content: flex-start; gap: 1px; }
-  .nav-actions { margin-left: auto; }
+  .navbar .nav-container { display: flex; flex-direction: row; flex-wrap: nowrap !important; justify-content: space-between; align-items: center; }
+  .navbar .nav-container .nav-links { display: flex; order: 0; flex: 1 1 auto; width: auto; justify-content: flex-start; gap: 1px; }
+  .navbar .nav-container .nav-actions { order: 1; flex: 0 0 auto; margin-left: auto; }
+  .app-page-section { scroll-margin-top: 156px; }
 }
 @media (max-width: 768px) {
   .nav-container { min-height: 60px; }
