@@ -3926,3 +3926,6 @@ body { background: var(--bg-primary) !important; background-image: none !importa
   .solar-orbit { transform: translate(-50%,-50%) rotateX(67deg); }
 }
 
+/* Keep interactions still: hover feedback may change color, but never lifts or tilts. */
+:hover { transform: none !important; }
+.hero-visual { transform: none !important; transition: none !important; }
