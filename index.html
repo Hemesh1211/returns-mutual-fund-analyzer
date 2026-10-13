@@ -493,7 +493,10 @@
               <span id="amountLabelText">Monthly SIP Investment</span>
               <span class="form-val-badge" id="sipAmountBadge">₹15,000 / mo</span>
             </div>
-            <input type="range" id="sipAmountRange" min="1000" max="100000" step="1000" value="15000" />
+            <div class="calc-range-keyboard">
+              <input type="range" id="sipAmountRange" min="1000" max="100000" step="1000" value="15000" />
+              <input type="number" id="sipAmountInput" class="calc-keyboard-input" min="1000" max="100000" step="1000" value="15000" inputmode="numeric" aria-label="Investment amount in rupees" />
+            </div>
           </div>
 
           <div class="form-group">
@@ -501,7 +504,10 @@
               <span>Annual SIP Step-Up (% increase every year)</span>
               <span class="form-val-badge" id="stepUpBadge">10% / yr</span>
             </div>
-            <input type="range" id="stepUpRange" min="0" max="25" step="5" value="10" />
+            <div class="calc-range-keyboard">
+              <input type="range" id="stepUpRange" min="0" max="25" step="1" value="10" />
+              <input type="number" id="stepUpInput" class="calc-keyboard-input" min="0" max="25" step="1" value="10" inputmode="numeric" aria-label="Annual SIP step-up percentage" />
+            </div>
           </div>
 
           <div class="form-group">
@@ -509,7 +515,10 @@
               <span>Investment Duration (Years)</span>
               <span class="form-val-badge" id="calcYearsBadge">10 Years</span>
             </div>
-            <input type="range" id="calcYearsRange" min="1" max="25" step="1" value="10" />
+            <div class="calc-range-keyboard">
+              <input type="range" id="calcYearsRange" min="1" max="25" step="1" value="10" />
+              <input type="number" id="calcYearsInput" class="calc-keyboard-input" min="1" max="25" step="1" value="10" inputmode="numeric" aria-label="Investment duration in years" />
+            </div>
           </div>
         </div>
 
