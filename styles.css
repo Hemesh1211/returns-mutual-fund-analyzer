@@ -3897,6 +3897,7 @@ body { background: var(--bg-primary) !important; background-image: none !importa
 }.nav-mega.active > summary { color: var(--accent-indigo); background: rgba(198,167,106,.09); }
 .nav-mega-panel a:focus-visible { outline: 2px solid var(--accent-indigo); outline-offset: 2px; }
 .app-page-section { scroll-margin-top: 116px; }
+.section-header { scroll-margin-top: 120px; }
 
 /* Solar system centerpiece */
 .solar-system { position: relative; width: min(100%, 330px); height: 166px; margin: 4px auto 7px; display: grid; place-items: center; perspective: 700px; }
