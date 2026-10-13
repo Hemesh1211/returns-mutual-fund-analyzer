@@ -3875,8 +3875,8 @@ body { background: var(--bg-primary) !important; background-image: none !importa
 .footer { border-top: 1px solid var(--border-color); color: var(--text-muted); }
 :where(a,button,input,select,textarea,[tabindex]):focus-visible { outline-color: var(--accent-indigo); }
 @media (max-width: 1050px) {
-  .nav-container { flex-wrap: wrap; }
-  .nav-links { order: 1; width: 100%; justify-content: center; }
+  .nav-container { flex-wrap: nowrap; }
+  .nav-links { order: 0; width: auto; justify-content: flex-start; gap: 1px; }
   .nav-actions { margin-left: auto; }
 }
 @media (max-width: 768px) {
@@ -3895,6 +3895,7 @@ body { background: var(--bg-primary) !important; background-image: none !importa
   .hero-visual { transform: none !important; }
 }.nav-mega.active > summary { color: var(--accent-indigo); background: rgba(198,167,106,.09); }
 .nav-mega-panel a:focus-visible { outline: 2px solid var(--accent-indigo); outline-offset: 2px; }
+.app-page-section { scroll-margin-top: 116px; }
 
 /* Solar system centerpiece */
 .solar-system { position: relative; width: min(100%, 330px); height: 166px; margin: 4px auto 7px; display: grid; place-items: center; perspective: 700px; }
@@ -3922,3 +3923,4 @@ body { background: var(--bg-primary) !important; background-image: none !importa
   .solar-orbit, .solar-sun { animation: none !important; }
   .solar-orbit { transform: translate(-50%,-50%) rotateX(67deg); }
 }
+
