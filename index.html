@@ -15,19 +15,18 @@
   <!-- App Viewport Wrapper (Switches between Fullscreen Laptop and Simulated Phone Frame) -->
   <div class="app-viewport-wrapper" id="appViewportWrapper">
 
-    <!-- NSE / BSE Benchmark Live Ticker Bar -->
-    <div class="ticker-bar">
-      <div style="font-weight: 800; color: var(--accent-emerald); letter-spacing: 0.04em; font-size: 0.75rem;">
-        NSE / BSE BENCHMARK TRI
-      </div>
-      <div class="ticker-items" id="marketTickerItems"></div>
-    </div>
-
     <!-- Sticky Navigation Bar -->
     <header class="navbar">
       <div class="nav-container">
         <a href="#" class="brand">
-          <div class="brand-logo">₹</div>
+          <div class="brand-logo" role="img" aria-label="Growing rupee logo">
+            <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+              <defs><linearGradient id="rupeeGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5D995"/><stop offset="1" stop-color="#E8B04A"/></linearGradient></defs>
+              <rect x="1" y="1" width="38" height="38" rx="10" fill="url(#rupeeGold)"/>
+              <text x="5" y="28" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#171614">₹</text>
+              <path d="M19 29l5-6 4 2 7-10m-6 0h6v6" fill="none" stroke="#171614" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
           <div>
             <div class="brand-title">
               Returns
@@ -38,15 +37,14 @@
         </a>
 
         <nav class="nav-links">
-          <a href="#explorerSection" class="nav-link active">Fund Screener</a>
-          <a href="#fundHousesSection" class="nav-link">🏛️ Fund Houses</a>
-          <a href="#allIndianFundsSection" class="nav-link">🌐 All Indian Funds (MFAPI)</a>
-          <a href="#comparisonStudioSection" class="nav-link">
-            Compare Studio <span class="compare-pill-count" id="navCompareCount">3/4</span>
+          <a href="#explorerSection" class="nav-link active" data-app-page-link="screener">Screener</a>
+          <a href="#fundHousesSection" class="nav-link" data-app-page-link="amcs">AMCs</a>
+          <a href="#comparisonStudioSection" class="nav-link" data-app-page-link="compare">
+            Compare <span class="compare-pill-count" id="navCompareCount">3/4</span>
           </a>
-          <a href="#sipCalculatorSection" class="nav-link">SIP &amp; Tax Calculator</a>
-          <a href="#marketNewsSection" class="nav-link">📰 Market News</a>
-          <a href="#guideSection" class="nav-link">MF Guide &amp; Terms</a>
+          <a href="#marketNewsSection" class="nav-link" data-app-page-link="news">News</a>
+          <a href="#sipCalculatorSection" class="nav-link" data-app-page-link="sip">SIP Calculator</a>
+          <a href="#guideSection" class="nav-link" data-app-page-link="guide">Mutual Funds Terms</a>
         </nav>
 
         <div class="nav-actions">
@@ -73,7 +71,7 @@
   <main class="container">
 
     <!-- Hero Overview -->
-    <section class="hero">
+    <section class="hero app-page-section" id="heroOverview" data-app-page="screener">
       <div>
         <div class="hero-tag">● Direct Plan - Growth • AMFI &amp; NSE TRI Benchmarked</div>
         <h1>
@@ -113,13 +111,18 @@
     </section>
 
     <!-- SECTION 1: Mutual Fund Screener & Return Explorer -->
-    <section id="explorerSection">
+    <section id="explorerSection" class="app-page-section" data-app-page="screener">
       <div class="section-header">
         <div>
           <h2 class="section-title">Indian Mutual Fund Return Screener</h2>
           <p class="section-subtitle">Click any column header to sort, click a fund name for sector &amp; holding breakdown, or select up to 4 funds to compare.</p>
         </div>
         <span class="brand-badge" id="fundsCountBadge">69 Direct Growth Schemes</span>
+      </div>
+
+      <div class="data-note" role="note">
+        <strong>Data freshness:</strong> NAV and trailing returns are refreshed from MFAPI/AMFI when available. Figures shown before a successful refresh are sample reference data; risk ratios, holdings and expense figures may also be illustrative. Check the scheme factsheet before relying on a figure.
+        <span id="dataFreshnessStatus" aria-live="polite">Waiting for NAV refresh…</span>
       </div>
 
       <!-- Filter & Search Controls -->
@@ -136,7 +139,7 @@
 
         <div class="category-pills">
           <button class="pill-btn active" data-category="All">All Funds</button>
-          <button class="pill-btn" data-category="Invesco" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc;">🏛️ Invesco Funds</button>
+          <button class="pill-btn" data-category="Invesco" style="border-color: rgba(232, 176, 74, 0.4); color: var(--accent-indigo);">🏛️ Invesco Funds</button>
           <button class="pill-btn" data-category="Large Cap">Large Cap</button>
           <button class="pill-btn" data-category="Flexi Cap">Flexi Cap</button>
           <button class="pill-btn" data-category="Mid Cap">Mid Cap</button>
@@ -182,10 +185,11 @@
           <tbody id="fundsTableBody"></tbody>
         </table>
       </div>
+
     </section>
 
     <!-- SECTION: Mutual Fund Houses (AMCs) & Portfolio Directory -->
-    <section id="fundHousesSection" class="fund-houses-section">
+    <section id="fundHousesSection" class="fund-houses-section app-page-section" data-app-page="amcs">
       <div class="section-header">
         <div>
           <h2 class="section-title">Indian Mutual Fund Houses (AMCs) &amp; Portfolio Directory</h2>
@@ -204,7 +208,7 @@
     </section>
 
     <!-- SECTION: All Indian Mutual Funds Explorer (Powered by MFAPI.in) -->
-    <section id="allIndianFundsSection" class="mfapi-explorer-section">
+    <section id="allIndianFundsSection" class="mfapi-explorer-section app-page-section" data-app-page="screener">
       <div class="section-header">
         <div>
           <span class="hero-tag">🌐 ALL 45,000+ SCHEMES • LIVE AMFI API</span>
@@ -220,6 +224,7 @@
           <button class="btn btn-sm" onclick="syncAllAmfiFunds(true)" title="Force sync latest AMFI NAVs for all displayed funds">
             🔄 Auto-Sync All Funds
           </button>
+          <button class="btn btn-sm btn-primary" id="btnLoadFullCatalog" type="button">📚 Load Full Indian Fund Catalog</button>
         </div>
       </div>
 
@@ -264,11 +269,11 @@
         <!-- Filter Options Row (Direct Plan & Growth Toggles) -->
         <div class="mfapi-filter-options-row">
           <label class="custom-checkbox-label" title="Show only Direct Plans which have no distributor commissions">
-            <input type="checkbox" id="chkDirectOnly" checked onchange="handleMfapiFilterChange()" />
+            <input type="checkbox" id="chkDirectOnly" onchange="handleMfapiFilterChange()" />
             <span>Direct Plans Only <small>(Zero Distributor Commission)</small></span>
           </label>
           <label class="custom-checkbox-label" title="Show Growth option instead of IDCW/dividend to focus on wealth compounding">
-            <input type="checkbox" id="chkGrowthOnly" checked onchange="handleMfapiFilterChange()" />
+            <input type="checkbox" id="chkGrowthOnly" onchange="handleMfapiFilterChange()" />
             <span>Growth Options Only <small>(True Compounding)</small></span>
           </label>
           <div style="margin-left: auto; font-size: 0.82rem; color: var(--text-secondary);" id="mfapiSearchCountText">
@@ -327,8 +332,34 @@
       </div>
     </section>
 
+    <!-- SECTION: Locally saved historical NAV database -->
+    <section id="navHistorySection" class="nav-history-section app-page-section" data-app-page="screener">
+      <div class="section-header">
+        <div>
+          <span class="hero-tag">YOUR BROWSER DATABASE</span>
+          <h2 class="section-title">Historical Mutual Fund NAV Database</h2>
+          <p class="section-subtitle">Browse and export daily NAV history saved from AMFI/MFAPI whenever a scheme is synced or loaded.</p>
+        </div>
+        <span class="brand-badge" id="navDbRecordCount">Opening database…</span>
+      </div>
+      <div class="nav-history-card">
+        <div class="nav-history-controls">
+          <label>Find a saved scheme<input id="navHistorySearch" type="search" placeholder="Search fund name or scheme code"></label>
+          <label>Select scheme<select id="navHistoryScheme"><option value="">No saved schemes yet</option></select></label>
+          <button class="btn" id="navHistoryExportBtn" type="button" disabled>⬇ Export CSV</button>
+        </div>
+        <p class="nav-history-message" id="navHistoryMessage" aria-live="polite">Saved NAVs stay in this browser on this device.</p>
+        <div class="table-wrapper nav-history-table-wrap">
+          <table class="funds-table">
+            <thead><tr><th>Date</th><th>NAV (₹)</th><th>Daily change</th><th>Saved</th></tr></thead>
+            <tbody id="navHistoryTableBody"><tr><td colspan="4">Sync or load a scheme to start saving history.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- SECTION: Head-to-Head Comparison Studio -->
-    <section id="comparisonStudioSection" class="comparison-studio">
+    <section id="comparisonStudioSection" class="comparison-studio app-page-section" data-app-page="compare">
       <div class="section-header">
         <div>
           <h2 class="section-title">Head-to-Head Fund Comparison Studio</h2>
@@ -349,7 +380,7 @@
             </span>
             <div class="quick-preset-bar">
               <span style="font-size:0.76rem; color:var(--text-muted); font-weight:600;">Quick Presets:</span>
-              <button class="preset-chip" onclick="applyComparePreset(['invesco-midcap', 'invesco-smallcap', 'invesco-flexicap', 'invesco-largecap'])" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc;">🏛️ Invesco Flagship Suite</button>
+              <button class="preset-chip" onclick="applyComparePreset(['invesco-midcap', 'invesco-smallcap', 'invesco-flexicap', 'invesco-largecap'])" style="border-color: rgba(232, 176, 74, 0.4); color: var(--accent-indigo);">🏛️ Invesco Flagship Suite</button>
               <button class="preset-chip" onclick="applyComparePreset(['ppfas-flexi', 'motilal-midcap', 'nippon-smallcap', 'nippon-largecap'])">Large vs Flexi vs Mid vs Small</button>
               <button class="preset-chip" onclick="applyComparePreset(['ppfas-flexi', 'hdfc-flexicap', 'jm-flexicap'])">Top Flexi Caps</button>
               <button class="preset-chip" onclick="applyComparePreset(['nippon-smallcap', 'quant-smallcap', 'sbi-smallcap', 'tata-smallcap'])">Top Small Caps</button>
@@ -433,7 +464,7 @@
     </section>
 
     <!-- SECTION 3: Indian SIP, Step-Up SIP & LTCG Tax Calculator -->
-    <section id="sipCalculatorSection">
+    <section id="sipCalculatorSection" class="app-page-section" data-app-page="sip">
       <div class="section-header">
         <div>
           <h2 class="section-title">Indian SIP, Step-Up &amp; LTCG Tax Calculator</h2>
@@ -521,10 +552,24 @@
           </div>
         </div>
       </div>
+
+      <div class="goal-planner panel-card">
+        <div class="goal-planner-intro">
+          <span class="hero-tag">PLAN A TARGET</span>
+          <h3>What monthly SIP could reach your goal?</h3>
+          <p>Compare three assumed annual return scenarios. These are estimates, not forecasts or guaranteed returns.</p>
+        </div>
+        <div class="goal-planner-controls">
+          <label>Goal amount (₹)<input id="goalAmountInput" type="number" min="10000" step="50000" value="2500000" inputmode="numeric"></label>
+          <label>Time horizon (years)<input id="goalYearsInput" type="number" min="1" max="40" step="1" value="10" inputmode="numeric"></label>
+        </div>
+        <div class="goal-scenarios" id="goalScenarioResults" aria-live="polite"></div>
+        <small class="goal-disclaimer">Assumes monthly investments at month end and a steady return. Taxes, inflation, fees and market volatility are not included.</small>
+      </div>
     </section>
 
     <!-- SECTION: Indian Stock Market & Mutual Fund Live News & Updates -->
-    <section id="marketNewsSection" class="market-news-section">
+    <section id="marketNewsSection" class="market-news-section app-page-section" data-app-page="news">
       <div class="section-header">
         <div>
           <span class="hero-tag">⚡ LIVE STOCK MARKET &amp; MUTUAL FUND INTELLIGENCE</span>
@@ -537,7 +582,7 @@
           <button class="btn btn-sm" onclick="refreshMarketNewsFeed()" id="btnRefreshNews" title="Fetch latest stock market and mutual fund updates">
             🔄 Refresh News Feed
           </button>
-          <span class="brand-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);">
+          <span class="brand-badge" style="background: rgba(232, 176, 74, 0.15); color: var(--accent-indigo); border-color: rgba(232, 176, 74, 0.3);">
             ● Live Market Pulse
           </span>
         </div>
@@ -614,11 +659,11 @@
     </section>
 
     <!-- SECTION 4: Mutual Fund Knowledge Hub, Glossary & Direct vs Regular Guide -->
-    <section id="guideSection" class="guide-section">
+    <section id="guideSection" class="guide-section app-page-section" data-app-page="guide">
       <div class="section-header">
         <div>
           <span class="hero-tag">🎓 INVESTOR EDUCATION HUB</span>
-          <h2 class="section-title">Mutual Funds Explained: Concepts, Terms &amp; Direct vs Regular Plans</h2>
+          <h2 class="section-title">Mutual Funds Terms</h2>
           <p class="section-subtitle">Everything you need to know about how mutual funds operate in the Indian stock market, key risk-return metrics, and how distributor commissions affect your wealth.</p>
         </div>
       </div>
@@ -718,7 +763,7 @@
               </div>
             </div>
             <div class="sebi-cat-box">
-              <div class="sebi-cat-tag" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);">Mid Cap Funds</div>
+              <div class="sebi-cat-tag" style="background: rgba(232, 176, 74, 0.15); color: var(--accent-indigo); border-color: rgba(232, 176, 74, 0.3);">Mid Cap Funds</div>
               <div style="font-size: 0.84rem; color: var(--text-secondary); margin-top: 6px;">
                 Must invest at least <strong>65% in 101st to 250th companies</strong> (e.g. Persistent, Trent, Dixon). High growth potential with moderate to high volatility.
               </div>
@@ -841,7 +886,7 @@
           <!-- Alpha -->
           <div class="term-card" data-term="alpha outperformance jensen benchmark">
             <div class="term-header">
-              <span class="term-badge" style="background:var(--accent-indigo-bg); color:#818cf8;">OUTPERFORMANCE</span>
+              <span class="term-badge" style="background:var(--accent-indigo-bg); color:var(--accent-indigo);">OUTPERFORMANCE</span>
               <h4 class="term-name">Alpha (α)</h4>
             </div>
             <p class="term-desc">
@@ -1117,6 +1162,28 @@
 
   </main>
 
+  <!-- First-visit mutual fund experience prompt -->
+  <div class="modal-backdrop welcome-backdrop" id="welcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" aria-describedby="welcomeDescription">
+    <div class="modal-card welcome-card">
+      <span class="brand-badge">WELCOME TO RETURNS</span>
+      <h2 id="welcomeTitle">How familiar are you with mutual funds?</h2>
+      <p id="welcomeDescription">We’ll point you to the right place to get started. The site’s guide explains the basics, risks, and common terms.</p>
+      <form id="welcomeExperienceForm">
+        <fieldset class="experience-options">
+          <legend>Your experience</legend>
+          <label class="experience-option"><input type="radio" name="experience" value="new" required><span><strong>New to mutual funds</strong><small>I’m learning the basics</small></span></label>
+          <label class="experience-option"><input type="radio" name="experience" value="some"><span><strong>I have some experience</strong><small>I know the basics and want to explore</small></span></label>
+          <label class="experience-option"><input type="radio" name="experience" value="experienced"><span><strong>Experienced investor</strong><small>Take me to the tools and comparisons</small></span></label>
+        </fieldset>
+        <div class="welcome-actions">
+          <button class="btn btn-primary" type="submit" name="destination" value="guide">Start with the MF Guide</button>
+          <button class="btn" type="submit" name="destination" value="explore">Explore the site</button>
+        </div>
+      </form>
+      <button class="welcome-skip" type="button" id="welcomeSkipBtn">Maybe later</button>
+    </div>
+  </div>
+
   <!-- Deep-Dive Fund Modal -->
   <div class="modal-backdrop" id="fundDetailModal" onclick="if(event.target === this) closeFundModal()">
     <div class="modal-card" id="fundModalContent"></div>
@@ -1221,33 +1288,29 @@
 
   <!-- Mobile Bottom Sticky Navigation Bar (Visible only on phones) -->
   <nav class="mobile-bottom-nav">
-    <a href="#explorerSection" class="mobile-nav-item active">
+    <a href="#explorerSection" class="mobile-nav-item active" data-app-page-link="screener">
       <span class="mobile-nav-icon">🔍</span>
       <span class="mobile-nav-label">Screener</span>
     </a>
-    <a href="#fundHousesSection" class="mobile-nav-item">
+    <a href="#fundHousesSection" class="mobile-nav-item" data-app-page-link="amcs">
       <span class="mobile-nav-icon">🏢</span>
       <span class="mobile-nav-label">AMCs</span>
     </a>
-    <a href="#allIndianFundsSection" class="mobile-nav-item">
-      <span class="mobile-nav-icon">🌐</span>
-      <span class="mobile-nav-label">All Funds</span>
-    </a>
-    <a href="#comparisonStudioSection" class="mobile-nav-item">
+    <a href="#comparisonStudioSection" class="mobile-nav-item" data-app-page-link="compare">
       <span class="mobile-nav-icon">⚖️</span>
       <span class="mobile-nav-label">Compare <small id="mobileCompareCountBadge" style="color:var(--accent-emerald); font-weight:800;">(3)</small></span>
     </a>
-    <a href="#marketNewsSection" class="mobile-nav-item">
+    <a href="#marketNewsSection" class="mobile-nav-item" data-app-page-link="news">
       <span class="mobile-nav-icon">📰</span>
       <span class="mobile-nav-label">News</span>
     </a>
-    <a href="#sipCalculatorSection" class="mobile-nav-item">
+    <a href="#sipCalculatorSection" class="mobile-nav-item" data-app-page-link="sip">
       <span class="mobile-nav-icon">🧮</span>
       <span class="mobile-nav-label">SIP Calc</span>
     </a>
-    <a href="#guideSection" class="mobile-nav-item">
+    <a href="#guideSection" class="mobile-nav-item" data-app-page-link="guide">
       <span class="mobile-nav-icon">📚</span>
-      <span class="mobile-nav-label">Guide</span>
+      <span class="mobile-nav-label">Terms</span>
     </a>
   </nav>
 
