@@ -18,7 +18,7 @@
     <!-- Sticky Navigation Bar -->
     <header class="navbar">
       <div class="nav-container">
-        <a href="#" class="brand">
+          <a href="#heroOverview" class="brand" data-app-page-link="home" aria-label="Returns home">
           <div class="brand-logo" role="img" aria-label="Growing rupee logo">
             <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
               <defs><linearGradient id="rupeeGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5D995"/><stop offset="1" stop-color="#E8B04A"/></linearGradient></defs>
@@ -27,43 +27,26 @@
               <path d="M19 29l5-6 4 2 7-10m-6 0h6v6" fill="none" stroke="#171614" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <div>
-            <div class="brand-title">
-              Returns
-              <span class="brand-badge">INDIA MF</span>
-            </div>
-            <span class="brand-sub">Indian Stock Market Mutual Fund Intelligence</span>
-          </div>
         </a>
 
         <nav class="nav-links">
-          <a href="#explorerSection" class="nav-link active" data-app-page-link="screener">Screener</a>
-          <a href="#fundHousesSection" class="nav-link" data-app-page-link="amcs">AMCs</a>
+          <a href="#heroOverview" class="nav-link active" data-app-page-link="home">Home</a>
           <a href="#comparisonStudioSection" class="nav-link" data-app-page-link="compare">
             Compare <span class="compare-pill-count" id="navCompareCount">3/4</span>
           </a>
-          <a href="#marketNewsSection" class="nav-link" data-app-page-link="news">News</a>
-          <a href="#sipCalculatorSection" class="nav-link" data-app-page-link="sip">SIP Calculator</a>
-          <a href="#guideSection" class="nav-link" data-app-page-link="guide">Mutual Funds Terms</a>
+          <a href="#explorerSection" class="nav-link" data-app-page-link="categories">Categories</a>
+          <a href="#fundDetailsSection" class="nav-link" data-app-page-link="details">Fund Details</a>
+          <a href="#toolsSection" class="nav-link" data-app-page-link="tools">Tools</a>
+          <a href="#marketNewsSection" class="nav-link" data-app-page-link="learn">Learn</a>
         </nav>
 
         <div class="nav-actions">
-          <!-- PHONE AND LAPTOP VIEW SWITCHER -->
-          <div class="device-switch-wrap" title="Switch between Laptop / Desktop format and Mobile Phone format">
-            <button class="device-btn active" id="btnDeviceLaptop" onclick="setDeviceView('laptop')">
-              💻 Laptop
-            </button>
-            <button class="device-btn" id="btnDevicePhone" onclick="setDeviceView('phone')">
-              📱 Phone
-            </button>
-          </div>
-
           <button class="btn" id="liveSyncStatusBtn" onclick="syncAllAmfiFunds(true)" title="Pulls latest daily NAVs & recalculates 1Y/3Y/5Y/10Y CAGR from AMFI India API">
             <span id="syncDot" style="color:var(--accent-emerald);">●</span>
             <span id="syncStatusText">AMFI Live Daily Auto-Sync</span>
           </button>
           <button class="btn" id="themeToggleBtn">☀️ Light Mode</button>
-          <a href="#comparisonStudioSection" class="btn btn-primary">Compare Funds ↗</a>
+          <a href="#comparisonStudioSection" class="btn btn-primary" data-app-page-link="compare">Compare Funds ↗</a>
         </div>
       </div>
     </header>
@@ -71,22 +54,46 @@
   <main class="container">
 
     <!-- Hero Overview -->
-    <section class="hero app-page-section" id="heroOverview" data-app-page="screener">
-      <div>
+    <section class="hero app-page-section" id="heroOverview" data-app-page="home">
+      <div class="hero-copy">
         <div class="hero-tag">● Direct Plan - Growth • AMFI &amp; NSE TRI Benchmarked</div>
         <h1>
-          Compare Indian Mutual Funds by <span>True Alpha &amp; Compounding Returns</span>
+          Make every rupee <span>work harder.</span>
         </h1>
         <p>
-          Analyze trailing 1Y, 3Y, 5Y &amp; 10Y CAGR across Large Cap, Flexi Cap, Mid Cap, Small Cap &amp; ELSS funds. Inspect common NSE/BSE stock overlap, Sharpe ratios, and Direct vs Regular plan expense savings.
+          See beyond headline returns. Compare Indian mutual funds, explore their risk and holdings, and understand what your investments could become over time.
         </p>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <a href="#comparisonStudioSection" class="btn btn-primary">Open Head-to-Head Studio</a>
-          <a href="#sipCalculatorSection" class="btn">Calculate Step-Up SIP &amp; LTCG Tax</a>
+        <div class="hero-actions">
+          <a href="#comparisonStudioSection" class="btn btn-primary" data-app-page-link="compare">Compare funds <span aria-hidden="true">↗</span></a>
+          <a href="#sipCalculatorSection" class="btn" data-app-page-link="tools">Plan an SIP <span aria-hidden="true">→</span></a>
         </div>
+        <div class="hero-proof"><span class="hero-proof-dot"></span> Research tools for more confident investing <span class="hero-proof-divider">·</span> Data refreshes from AMFI when available</div>
       </div>
 
-      <div class="hero-stats">
+      <div class="hero-visual" id="heroVisual" aria-label="Interactive illustration of a growing mutual fund investment">
+        <div class="hero-visual-glow"></div>
+        <div class="orbit orbit-outer"><span></span></div>
+        <div class="orbit orbit-inner"><span></span></div>
+        <div class="hero-core">
+          <div class="hero-core-top"><span class="hero-live-dot"></span> GROWTH OVER TIME</div>
+          <svg class="growth-chart" viewBox="0 0 360 210" role="img" aria-label="Illustrative upward investment growth chart">
+            <defs>
+              <linearGradient id="growthFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#47e2bd" stop-opacity=".3"/><stop offset="1" stop-color="#47e2bd" stop-opacity="0"/></linearGradient>
+              <linearGradient id="growthLine" x1="0" x2="1"><stop offset="0" stop-color="#47e2bd"/><stop offset="1" stop-color="#7ed9ff"/></linearGradient>
+            </defs>
+            <path class="chart-area" d="M12 176 C45 168 49 148 83 153 S123 126 150 133 S191 94 218 106 S263 75 284 83 S324 38 348 24 L348 196 L12 196Z" fill="url(#growthFill)"/>
+            <path class="chart-line" d="M12 176 C45 168 49 148 83 153 S123 126 150 133 S191 94 218 106 S263 75 284 83 S324 38 348 24" fill="none" stroke="url(#growthLine)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="348" cy="24" r="6" fill="#b7ffed" class="chart-point"/>
+            <path d="M12 196H348" stroke="rgba(210,230,255,.12)" stroke-width="1"/>
+          </svg>
+          <div class="hero-core-foot"><span>YOUR INVESTMENT JOURNEY</span><span>LONG-TERM VIEW <b>↗</b></span></div>
+        </div>
+        <div class="float-chip chip-return"><span class="chip-icon">↗</span><span><small>COMPOUNDING</small><strong>Time in market</strong></span></div>
+        <div class="float-chip chip-rupee"><span class="chip-rupee-mark">₹</span><span><small>START WITH</small><strong>What you can</strong></span></div>
+        <div class="visual-caption">Illustration only · Returns are market-linked</div>
+      </div>
+
+      <div class="hero-stats" aria-label="Key mutual fund facts">
         <div class="stat-card">
           <div class="stat-label">Top 5Y Small Cap CAGR</div>
           <div class="stat-value">43.2%</div>
@@ -110,12 +117,27 @@
       </div>
     </section>
 
+    <section id="homeSection" class="home-launchpad app-page-section" data-app-page="home" aria-labelledby="homeSectionTitle">
+      <div class="home-section-heading">
+        <div><span class="home-eyebrow">YOUR INVESTING WORKSPACE</span><h2 id="homeSectionTitle">Where would you like to start?</h2><p>Choose a workspace. Your existing fund data and tools are organized below.</p></div>
+        <span class="home-section-mark" aria-hidden="true">₹</span>
+      </div>
+      <div class="home-feature-grid">
+        <a class="home-feature-card" href="#comparisonStudioSection" data-app-page-link="compare"><span class="home-card-icon">⇄</span><span class="home-card-kicker">RESEARCH</span><strong>Compare mutual funds</strong><span>Compare the schemes already in the dataset using the available return, risk, cost, and holdings details.</span><b class="home-card-link">Open comparison <i>↗</i></b></a>
+        <a class="home-feature-card" href="#explorerSection" data-app-page-link="categories"><span class="home-card-icon">◫</span><span class="home-card-kicker">BROWSE</span><strong>Fund categories</strong><span>Filter listed schemes by supported categories or browse the available AMC and MFAPI catalogs.</span><b class="home-card-link">Browse categories <i>↗</i></b></a>
+        <a class="home-feature-card" href="#fundDetailsSection" data-app-page-link="details"><span class="home-card-icon">⌕</span><span class="home-card-kicker">SCHEME RESEARCH</span><strong>Fund details</strong><span>Search the schemes in the current dataset and open the available performance, fees, risk, and holdings details.</span><b class="home-card-link">Find a scheme <i>↗</i></b></a>
+        <a class="home-feature-card" href="#toolsSection" data-app-page-link="tools"><span class="home-card-icon">⌁</span><span class="home-card-kicker">PLAN</span><strong>Tools &amp; calculators</strong><span>Explore SIP, step-up, lump-sum, goal-planning, and saved NAV-history tools.</span><b class="home-card-link">Open tools <i>↗</i></b></a>
+        <a class="home-feature-card" href="#guideSection" data-app-page-link="learn"><span class="home-card-icon">◎</span><span class="home-card-kicker">LEARN</span><strong>Learn the essentials</strong><span>Read the existing mutual fund guide, browse terms, and view the market-news section.</span><b class="home-card-link">Explore learning <i>↗</i></b></a>
+      </div>
+      <p class="home-data-note">Fund details open from a scheme in the category explorer. Figures that may be illustrative are identified in the relevant section; check current scheme documents before relying on them.</p>
+    </section>
+
     <!-- SECTION 1: Mutual Fund Screener & Return Explorer -->
-    <section id="explorerSection" class="app-page-section" data-app-page="screener">
+    <section id="explorerSection" class="app-page-section" data-app-page="categories">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Indian Mutual Fund Return Screener</h2>
-          <p class="section-subtitle">Click any column header to sort, click a fund name for sector &amp; holding breakdown, or select up to 4 funds to compare.</p>
+          <h2 class="section-title">Browse funds by category</h2>
+          <p class="section-subtitle">Filter the available schemes, browse fund houses, or open a scheme to view its supported details. You can also select up to 4 funds to compare.</p>
         </div>
         <span class="brand-badge" id="fundsCountBadge">69 Direct Growth Schemes</span>
       </div>
@@ -145,7 +167,15 @@
           <button class="pill-btn" data-category="Mid Cap">Mid Cap</button>
           <button class="pill-btn" data-category="Small Cap">Small Cap</button>
           <button class="pill-btn" data-category="ELSS / Tax">ELSS (80C)</button>
-          <button class="pill-btn" data-category="Index">Index</button>
+          <button class="pill-btn" data-category="Balanced Advantage">Balanced Advantage</button>
+          <button class="pill-btn" data-category="Contra / Value">Contra / Value</button>
+          <button class="pill-btn" data-category="Value Fund">Value Fund</button>
+          <button class="pill-btn" data-category="Multi Cap">Multi Cap</button>
+          <button class="pill-btn" data-category="Large &amp; Mid Cap">Large &amp; Mid Cap</button>
+          <button class="pill-btn" data-category="Dynamic Asset / BAF">Dynamic Asset / BAF</button>
+          <button class="pill-btn" data-category="Thematic / Infra">Thematic / Infra</button>
+          <button class="pill-btn" data-category="Thematic / Tech">Thematic / Tech</button>
+          <button class="pill-btn" data-category="Index Fund">Index Fund</button>
         </div>
 
         <div class="horizon-group" title="Highlight Return Horizon">
@@ -189,7 +219,7 @@
     </section>
 
     <!-- SECTION: Mutual Fund Houses (AMCs) & Portfolio Directory -->
-    <section id="fundHousesSection" class="fund-houses-section app-page-section" data-app-page="amcs">
+    <section id="fundHousesSection" class="fund-houses-section app-page-section" data-app-page="categories">
       <div class="section-header">
         <div>
           <h2 class="section-title">Indian Mutual Fund Houses (AMCs) &amp; Portfolio Directory</h2>
@@ -208,7 +238,7 @@
     </section>
 
     <!-- SECTION: All Indian Mutual Funds Explorer (Powered by MFAPI.in) -->
-    <section id="allIndianFundsSection" class="mfapi-explorer-section app-page-section" data-app-page="screener">
+    <section id="allIndianFundsSection" class="mfapi-explorer-section app-page-section" data-app-page="categories">
       <div class="section-header">
         <div>
           <span class="hero-tag">🌐 ALL 45,000+ SCHEMES • LIVE AMFI API</span>
@@ -332,8 +362,28 @@
       </div>
     </section>
 
+    <section id="fundDetailsSection" class="fund-details-page app-page-section" data-app-page="details" aria-labelledby="fundDetailsTitle">
+      <div class="section-header">
+        <div><span class="home-eyebrow">SCHEME LOOKUP</span><h2 id="fundDetailsTitle" class="section-title">Fund details</h2><p class="section-subtitle">Search schemes in the current dataset. Open a result to see the available performance, fee, risk, holdings, and NAV fields.</p></div>
+      </div>
+      <label class="detail-search-label" for="detailFundSearch">Find a mutual fund scheme</label>
+      <input id="detailFundSearch" class="search-input detail-search-input" type="search" autocomplete="off" placeholder="Search scheme, fund house, or category…" aria-label="Search fund details" />
+      <div id="fundDetailsResults" class="fund-details-results" aria-live="polite"></div>
+      <p class="home-data-note">Details vary by scheme. Figures in the current dataset may be illustrative; check the latest official scheme documents.</p>
+    </section>
+
     <!-- SECTION: Locally saved historical NAV database -->
-    <section id="navHistorySection" class="nav-history-section app-page-section" data-app-page="screener">
+    <section id="toolsSection" class="tools-launchpad app-page-section" data-app-page="tools" aria-labelledby="toolsSectionTitle">
+      <div class="section-header">
+        <div><span class="home-eyebrow">PLAN &amp; TRACK</span><h2 id="toolsSectionTitle" class="section-title">Tools and calculators</h2><p class="section-subtitle">Choose an investment calculator or review NAV history saved in this browser.</p></div>
+      </div>
+      <div class="tools-feature-grid">
+        <a class="tools-feature-card" href="#sipCalculatorSection" data-app-page-link="tools"><span class="home-card-icon">⌁</span><span><strong>SIP &amp; investment calculator</strong><small>Monthly, weekly, or daily SIP, step-up, lump sum, and goal planning.</small></span><b>Open calculator ↗</b></a>
+        <a class="tools-feature-card" href="#navHistorySection" data-app-page-link="tools"><span class="home-card-icon">◷</span><span><strong>Saved NAV history</strong><small>Browse NAV values already synced or imported into this browser’s local database.</small></span><b>View NAV history ↗</b></a>
+      </div>
+    </section>
+
+    <section id="navHistorySection" class="nav-history-section app-page-section" data-app-page="tools">
       <div class="section-header">
         <div>
           <span class="hero-tag">YOUR BROWSER DATABASE</span>
@@ -464,7 +514,7 @@
     </section>
 
     <!-- SECTION 3: Indian SIP, Step-Up SIP & LTCG Tax Calculator -->
-    <section id="sipCalculatorSection" class="app-page-section" data-app-page="sip">
+    <section id="sipCalculatorSection" class="app-page-section" data-app-page="tools">
       <div class="section-header">
         <div>
           <h2 class="section-title">Indian SIP, Step-Up &amp; LTCG Tax Calculator</h2>
@@ -587,7 +637,7 @@
     </section>
 
     <!-- SECTION: Indian Stock Market & Mutual Fund Live News & Updates -->
-    <section id="marketNewsSection" class="market-news-section app-page-section" data-app-page="news">
+    <section id="marketNewsSection" class="market-news-section app-page-section" data-app-page="learn">
       <div class="section-header">
         <div>
           <span class="hero-tag">⚡ LIVE STOCK MARKET &amp; MUTUAL FUND INTELLIGENCE</span>
@@ -677,7 +727,7 @@
     </section>
 
     <!-- SECTION 4: Mutual Fund Knowledge Hub, Glossary & Direct vs Regular Guide -->
-    <section id="guideSection" class="guide-section app-page-section" data-app-page="guide">
+    <section id="guideSection" class="guide-section app-page-section" data-app-page="learn">
       <div class="section-header">
         <div>
           <span class="hero-tag">🎓 INVESTOR EDUCATION HUB</span>
@@ -1306,29 +1356,29 @@
 
   <!-- Mobile Bottom Sticky Navigation Bar (Visible only on phones) -->
   <nav class="mobile-bottom-nav">
-    <a href="#explorerSection" class="mobile-nav-item active" data-app-page-link="screener">
-      <span class="mobile-nav-icon">🔍</span>
-      <span class="mobile-nav-label">Screener</span>
-    </a>
-    <a href="#fundHousesSection" class="mobile-nav-item" data-app-page-link="amcs">
-      <span class="mobile-nav-icon">🏢</span>
-      <span class="mobile-nav-label">AMCs</span>
+    <a href="#heroOverview" class="mobile-nav-item active" data-app-page-link="home">
+      <span class="mobile-nav-icon">⌂</span>
+      <span class="mobile-nav-label">Home</span>
     </a>
     <a href="#comparisonStudioSection" class="mobile-nav-item" data-app-page-link="compare">
       <span class="mobile-nav-icon">⚖️</span>
       <span class="mobile-nav-label">Compare <small id="mobileCompareCountBadge" style="color:var(--accent-emerald); font-weight:800;">(3)</small></span>
     </a>
-    <a href="#marketNewsSection" class="mobile-nav-item" data-app-page-link="news">
-      <span class="mobile-nav-icon">📰</span>
-      <span class="mobile-nav-label">News</span>
+    <a href="#explorerSection" class="mobile-nav-item" data-app-page-link="categories">
+      <span class="mobile-nav-icon">◫</span>
+      <span class="mobile-nav-label">Categories</span>
     </a>
-    <a href="#sipCalculatorSection" class="mobile-nav-item" data-app-page-link="sip">
-      <span class="mobile-nav-icon">🧮</span>
-      <span class="mobile-nav-label">SIP Calc</span>
+    <a href="#fundDetailsSection" class="mobile-nav-item" data-app-page-link="details">
+      <span class="mobile-nav-icon">⌕</span>
+      <span class="mobile-nav-label">Details</span>
     </a>
-    <a href="#guideSection" class="mobile-nav-item" data-app-page-link="guide">
-      <span class="mobile-nav-icon">📚</span>
-      <span class="mobile-nav-label">Terms</span>
+    <a href="#toolsSection" class="mobile-nav-item" data-app-page-link="tools">
+      <span class="mobile-nav-icon">⌁</span>
+      <span class="mobile-nav-label">Tools</span>
+    </a>
+    <a href="#marketNewsSection" class="mobile-nav-item" data-app-page-link="learn">
+      <span class="mobile-nav-icon">◎</span>
+      <span class="mobile-nav-label">Learn</span>
     </a>
   </nav>
 
