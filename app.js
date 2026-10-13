@@ -11,6 +11,7 @@ const STATE = {
   chartYears: 10,
   calc: {
     mode: "sip", // 'sip' | 'lumpsum'
+    frequency: "monthly", // daily | weekly | monthly
     fundId: "ppfas-flexi",
     monthlyAmount: 15000,
     lumpsumAmount: 200000,
@@ -20,7 +21,135 @@ const STATE = {
   }
 };
 
-const CHART_COLORS = ["#10b981", "#6366f1", "#f59e0b", "#ec4899"];
+const CHART_COLORS = ["#C6A76A", "#9DB6C7", "#7D91A6", "#B28C82"];
+const APP_PAGE_SECTIONS = {
+  home: ["heroOverview", "homeSection"],
+  categories: ["explorerSection", "fundHousesSection", "allIndianFundsSection"],
+  compare: ["comparisonStudioSection"],
+  details: ["fundDetailsSection"],
+  tools: ["toolsSection", "sipCalculatorSection", "navHistorySection"],
+  learn: ["marketNewsSection", "guideSection"]
+};
+let navHistoryDb = null;
+let navHistoryDbReady = null;
+let activeNavHistoryRows = [];
+
+function openNavHistoryDatabase() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error("IndexedDB is not available in this browser."));
+    const request = window.indexedDB.open("ReturnsNavHistory", 2);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("schemes")) db.createObjectStore("schemes", { keyPath: "schemeCode" });
+      if (!db.objectStoreNames.contains("schemeCatalog")) db.createObjectStore("schemeCatalog", { keyPath: "schemeCode" });
+      if (!db.objectStoreNames.contains("navHistory")) {
+        const store = db.createObjectStore("navHistory", { keyPath: "id" });
+        store.createIndex("schemeCode", "schemeCode", { unique: false });
+        store.createIndex("date", "date", { unique: false });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open NAV database."));
+  });
+}
+
+function amfiDateToISO(value) {
+  const parts = String(value || "").split("-");
+  if (parts.length !== 3) return "";
+  return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+}
+
+async function saveNavHistory(schemeCode, schemeName, navList, refresh = true) {
+  if (!navHistoryDb || !schemeCode || !Array.isArray(navList) || !navList.length) return;
+  try {
+  const code = String(schemeCode);
+  const savedAt = new Date().toISOString();
+  const transaction = navHistoryDb.transaction(["schemes", "navHistory"], "readwrite");
+  transaction.objectStore("schemes").put({ schemeCode: code, schemeName: schemeName || `AMFI Scheme ${code}`, lastSavedAt: savedAt });
+  const store = transaction.objectStore("navHistory");
+  navList.forEach((entry, index) => {
+    const nav = Number.parseFloat(entry.nav);
+    const date = amfiDateToISO(entry.date);
+    if (!date || !Number.isFinite(nav)) return;
+    const previousNav = navList[index + 1] ? Number.parseFloat(navList[index + 1].nav) : null;
+    const dailyChange = Number.isFinite(previousNav) && previousNav !== 0 ? ((nav - previousNav) / previousNav) * 100 : null;
+    store.put({ id: `${code}:${date}`, schemeCode: code, date, nav, dailyChange, savedAt });
+  });
+  await new Promise((resolve, reject) => {
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || new Error("Could not save NAV history."));
+    transaction.onabort = () => reject(transaction.error || new Error("NAV history save was cancelled."));
+  });
+  if (refresh) await refreshNavHistorySchemes();
+  } catch (error) {
+    console.warn("NAV history could not be saved:", error);
+    const message = document.getElementById("navHistoryMessage");
+    if (message) message.textContent = "The NAV history database could not save this update. Live fund data is still available.";
+  }
+}
+
+async function refreshNavHistorySchemes() {
+  if (!navHistoryDb) return;
+  const transaction = navHistoryDb.transaction(["schemes", "navHistory"], "readonly");
+  const schemesRequest = transaction.objectStore("schemes").getAll();
+  const countRequest = transaction.objectStore("navHistory").count();
+  const [schemes, count] = await Promise.all([
+    new Promise((resolve, reject) => { schemesRequest.onsuccess = () => resolve(schemesRequest.result); schemesRequest.onerror = () => reject(schemesRequest.error); }),
+    new Promise((resolve, reject) => { countRequest.onsuccess = () => resolve(countRequest.result); countRequest.onerror = () => reject(countRequest.error); })
+  ]);
+  const countEl = document.getElementById("navDbRecordCount");
+  if (countEl) countEl.textContent = `${Number(count).toLocaleString("en-IN")} NAV records • ${schemes.length} schemes`;
+  const select = document.getElementById("navHistoryScheme");
+  const search = (document.getElementById("navHistorySearch")?.value || "").trim().toLowerCase();
+  if (!select) return;
+  const selected = select.value;
+  const matches = schemes.filter(item => `${item.schemeName} ${item.schemeCode}`.toLowerCase().includes(search));
+  select.innerHTML = matches.length
+    ? matches.sort((a, b) => a.schemeName.localeCompare(b.schemeName)).map(item => `<option value="${item.schemeCode}">${item.schemeName} (#${item.schemeCode})</option>`).join("")
+    : '<option value="">No matching saved schemes</option>';
+  if (matches.some(item => item.schemeCode === selected)) select.value = selected;
+  else if (matches.length) select.value = matches[0].schemeCode;
+  if (select.value) await renderNavHistory(select.value);
+}
+
+async function areFundHistoriesSaved() {
+  if (!navHistoryDb) return true;
+  const known = await new Promise((resolve, reject) => {
+    const request = navHistoryDb.transaction("schemes", "readonly").objectStore("schemes").getAllKeys();
+    request.onsuccess = () => resolve(new Set(request.result.map(String)));
+    request.onerror = () => reject(request.error);
+  });
+  const codeMap = window.AMFI_SCHEME_CODES || {};
+  const schemeCodes = window.MUTUAL_FUNDS.map(fund => String(fund.amfiCode || codeMap[fund.id] || "")).filter(Boolean);
+  return schemeCodes.every(code => known.has(code));
+}
+
+async function renderNavHistory(schemeCode) {
+  if (!navHistoryDb || !schemeCode) return;
+  const body = document.getElementById("navHistoryTableBody");
+  const message = document.getElementById("navHistoryMessage");
+  const exportButton = document.getElementById("navHistoryExportBtn");
+  const transaction = navHistoryDb.transaction("navHistory", "readonly");
+  const request = transaction.objectStore("navHistory").index("schemeCode").getAll(String(schemeCode));
+  const rows = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+  rows.sort((a, b) => b.date.localeCompare(a.date));
+  activeNavHistoryRows = rows;
+  if (exportButton) exportButton.disabled = rows.length === 0;
+  if (message) message.textContent = rows.length ? `${rows.length.toLocaleString("en-IN")} daily NAV values saved for scheme #${schemeCode}. Showing the latest 250; CSV export includes all saved dates.` : "No NAV history is saved for this scheme yet.";
+  if (body) body.innerHTML = rows.length ? rows.slice(0, 250).map(row => `<tr><td>${row.date}</td><td class="mono-num">₹${row.nav.toFixed(4)}</td><td>${row.dailyChange == null ? "—" : `${row.dailyChange >= 0 ? "+" : ""}${row.dailyChange.toFixed(2)}%`}</td><td>${new Date(row.savedAt).toLocaleString()}</td></tr>`).join("") : '<tr><td colspan="4">Load or sync this scheme to save its NAV history.</td></tr>';
+}
+
+function exportNavHistoryCsv() {
+  const rows = activeNavHistoryRows;
+  if (!rows.length) return;
+  const schemeName = document.getElementById("navHistoryScheme")?.selectedOptions[0]?.textContent || "Mutual fund";
+  const csv = ["Scheme,AMFI Scheme Code,Date,NAV (INR),Daily Change (%)", ...rows.map(row => [schemeName, row.schemeCode, row.date, row.nav, row.dailyChange ?? ""].map(value => `"${String(value).replaceAll('"', '""')}"`).join(","))].join("\r\n");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  link.download = `nav-history-${document.getElementById("navHistoryScheme")?.value || "scheme"}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
 
 // Indian Numbering Formatters
 function formatINR(num) {
@@ -36,6 +165,120 @@ function formatIndianCompact(num) {
     return "₹" + (num / 100000).toFixed(2) + " L";
   }
   return formatINR(num);
+}
+
+function getAppPageForTarget(targetId) {
+  const target = document.getElementById(targetId);
+  return target?.closest(".app-page-section")?.dataset.appPage || null;
+}
+
+window.setAppPage = function(page, targetId = null, updateAddress = false) {
+  if (!APP_PAGE_SECTIONS[page]) page = "home";
+  document.querySelectorAll(".app-page-section").forEach(section => {
+    section.classList.toggle("app-page-hidden", !APP_PAGE_SECTIONS[page].includes(section.id));
+  });
+  document.querySelectorAll("[data-app-page-link]").forEach(link => {
+    const active = link.dataset.appPageLink === page;
+    link.classList.toggle("active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  document.querySelectorAll(".nav-mega").forEach(menu => {
+    const active = [...menu.querySelectorAll("[data-app-page-link]")].some(link => link.dataset.appPageLink === page);
+    menu.classList.toggle("active", active);
+    const summary = menu.querySelector("summary");
+    if (summary && active) summary.setAttribute("aria-current", "page");
+    else summary?.removeAttribute("aria-current");
+  });
+  const destination = targetId || APP_PAGE_SECTIONS[page][0];
+  if (updateAddress && destination) history.pushState({ page }, "", `#${destination}`);
+  requestAnimationFrame(() => {
+    const target = document.getElementById(destination);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo(0, 0);
+  });
+};
+
+function routeToCurrentHash() {
+  const targetId = window.location.hash.slice(1);
+  const page = getAppPageForTarget(targetId) || "home";
+  window.setAppPage(page, targetId || null, false);
+}
+
+function renderFundDetailsResults(query = "") {
+  const container = document.getElementById("fundDetailsResults");
+  if (!container) return;
+  const needle = String(query).trim().toLowerCase();
+  const funds = (window.MUTUAL_FUNDS || []).filter(fund =>
+    !needle || `${fund.name} ${fund.amc} ${fund.category} ${fund.manager || ""}`.toLowerCase().includes(needle)
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  container.replaceChildren();
+  if (!funds.length) {
+    const empty = document.createElement("p");
+    empty.className = "detail-search-empty";
+    empty.textContent = "No matching schemes in the current dataset.";
+    container.append(empty);
+    return;
+  }
+
+  const status = document.createElement("p");
+  status.className = "detail-results-count";
+  status.textContent = `${funds.length.toLocaleString("en-IN")} ${funds.length === 1 ? "scheme" : "schemes"} available`;
+  container.append(status);
+
+  const grid = document.createElement("div");
+  grid.className = "detail-fund-grid";
+  funds.forEach(fund => {
+    const card = document.createElement("article");
+    card.className = "detail-fund-card";
+    const category = document.createElement("span");
+    category.className = "detail-fund-category";
+    category.textContent = fund.category || "Category not available";
+    const title = document.createElement("h3");
+    title.textContent = fund.name;
+    const house = document.createElement("p");
+    house.textContent = fund.amc || "Fund house not available";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn detail-open-button";
+    button.textContent = "View available details ↗";
+    button.addEventListener("click", () => window.openFundModal(fund.id));
+    card.append(category, title, house, button);
+    grid.append(card);
+  });
+  container.append(grid);
+}
+
+function renderGoalPlanner() {
+  const amountInput = document.getElementById("goalAmountInput");
+  const yearsInput = document.getElementById("goalYearsInput");
+  const output = document.getElementById("goalScenarioResults");
+  if (!amountInput || !yearsInput || !output) return;
+  const goal = Math.max(0, Number(amountInput.value) || 0);
+  const years = Math.min(40, Math.max(1, Number(yearsInput.value) || 1));
+  const months = years * 12;
+  output.innerHTML = [6, 10, 14].map(rate => {
+    const monthlyRate = Math.pow(1 + rate / 100, 1 / 12) - 1;
+    const sip = monthlyRate === 0 ? goal / months : goal * monthlyRate / (Math.pow(1 + monthlyRate, months) - 1);
+    return `<div class="goal-scenario"><span class="goal-rate">${rate}% assumed return</span><strong>${formatINR(sip)}<small> / month</small></strong><span class="goal-total">Total contributions: ${formatIndianCompact(sip * months)}</span></div>`;
+  }).join("");
+}
+
+function closeWelcomeModal() {
+  document.getElementById("welcomeModal")?.classList.remove("open");
+}
+
+function finishWelcome(event) {
+  event.preventDefault();
+  const form = document.getElementById("welcomeExperienceForm");
+  const experience = new FormData(form).get("experience");
+  const destination = event.submitter?.value || "guide";
+  try { localStorage.setItem("returns_onboarding_v1", JSON.stringify({ experience, completedAt: new Date().toISOString() })); } catch (_) {}
+  closeWelcomeModal();
+  if (destination === "guide") {
+    setTimeout(() => window.setAppPage("learn", "guideSection", true), 180);
+  }
 }
 
 // Render Market Indices Bar
@@ -360,15 +603,6 @@ function drawComparisonChart(comparedFunds) {
     points: computeWealthSeries(f.returns[cagrKey], years, STATE.chartMode)
   }));
 
-  // Add NIFTY 50 TRI Benchmark dashed line
-  const niftyCagr = years === 3 ? 15.4 : years === 5 ? 17.8 : 14.2;
-  seriesList.push({
-    name: "NIFTY 50 TRI (Benchmark)",
-    cagr: niftyCagr,
-    color: "#94a3b8",
-    dashed: true,
-    points: computeWealthSeries(niftyCagr, years, STATE.chartMode)
-  });
 
   const maxVal = Math.max(...seriesList.flatMap(s => s.points)) * 1.08;
   const padLeft = 72;
@@ -439,7 +673,7 @@ function drawComparisonChart(comparedFunds) {
       return `
         <div class="legend-item">
           <span class="legend-dot" style="background: ${s.color};"></span>
-          <span>${s.name} (${s.cagr}%):</span>
+          <span>${s.name} (${s.cagr}% assumption):</span>
           <strong class="mono-num" style="color: ${s.color};">${formatIndianCompact(finalAmt)}</strong>
         </div>
       `;
@@ -829,16 +1063,16 @@ function runCalculator() {
   let directCorpus = 0;
   let regularCorpus = 0;
 
-  const rMonthlyDirect = Math.pow(1 + cagr / 100, 1 / 12) - 1;
-  const rMonthlyReg = Math.pow(1 + regCagr / 100, 1 / 12) - 1;
-
   if (STATE.calc.mode === "sip") {
-    let currentSip = STATE.calc.monthlyAmount;
+    const periodsPerYear = { daily: 365, weekly: 52, monthly: 12 }[STATE.calc.frequency] || 12;
+    const rateDirect = Math.pow(1 + cagr / 100, 1 / periodsPerYear) - 1;
+    const rateReg = Math.pow(1 + regCagr / 100, 1 / periodsPerYear) - 1;
+    let currentSip = STATE.calc.monthlyAmount * 12 / periodsPerYear;
     for (let y = 1; y <= years; y++) {
-      for (let m = 1; m <= 12; m++) {
+      for (let period = 1; period <= periodsPerYear; period++) {
         totalInvested += currentSip;
-        directCorpus = (directCorpus + currentSip) * (1 + rMonthlyDirect);
-        regularCorpus = (regularCorpus + currentSip) * (1 + rMonthlyReg);
+        directCorpus = (directCorpus + currentSip) * (1 + rateDirect);
+        regularCorpus = (regularCorpus + currentSip) * (1 + rateReg);
       }
       currentSip = currentSip * (1 + STATE.calc.stepUpPercent / 100);
     }
@@ -849,17 +1083,17 @@ function runCalculator() {
   }
 
   const totalGains = Math.max(0, directCorpus - totalInvested);
-  // Indian Union Budget Equity LTCG Tax Rule: 12.5% above ₹1,25,000 exemption
-  const taxableGains = Math.max(0, totalGains - 125000);
-  const ltcgTax = taxableGains * 0.125;
-  const postTaxCorpus = directCorpus - ltcgTax;
+  // Tax outcomes depend on current law, scheme type, holding period, and investor circumstances.
+  // Do not present a fixed tax estimate as a personalized or current calculation.
+  const ltcgTax = null;
+  const postTaxCorpus = null;
   const directCommissionSaved = Math.max(0, directCorpus - regularCorpus);
 
   document.getElementById("calcInvestedVal").textContent = formatIndianCompact(totalInvested);
   document.getElementById("calcGainsVal").textContent = "+" + formatIndianCompact(totalGains);
   document.getElementById("calcTotalVal").textContent = formatIndianCompact(directCorpus);
-  document.getElementById("calcPostTaxVal").textContent = formatIndianCompact(postTaxCorpus);
-  document.getElementById("calcLtcgNote").textContent = `Est. LTCG Tax (12.5% > ₹1.25L): ${formatINR(ltcgTax)}`;
+  document.getElementById("calcPostTaxVal").textContent = "See current tax rules";
+  document.getElementById("calcLtcgNote").textContent = "Tax depends on current law, fund type, holding period and individual circumstances.";
   document.getElementById("calcDirectSaved").textContent = formatIndianCompact(directCommissionSaved);
   document.getElementById("calcFundCagrBadge").textContent = `${cagr.toFixed(1)}% CAGR (${fund.shortName})`;
 }
@@ -919,7 +1153,7 @@ window.openFundModal = function(fundId) {
     <div class="modal-header-row">
       <div style="flex:1;">
         <div class="modal-badge-strip">
-          <span class="brand-badge" style="background:rgba(99,102,241,0.15); color:var(--accent-indigo); border-color:rgba(99,102,241,0.3); font-weight:700;">
+          <span class="brand-badge" style="background:rgba(232,176,74,0.15); color:var(--accent-indigo); border-color:rgba(232,176,74,0.3); font-weight:700;">
             ${fund.amc}
           </span>
           <span class="badge-cat">${fund.category} • ${fund.plan}</span>
@@ -1013,7 +1247,7 @@ window.openFundModal = function(fundId) {
     <div class="modal-wealth-callout">
       <div>
         <div style="font-size:0.76rem; font-weight:700; color:var(--accent-indigo); text-transform:uppercase; letter-spacing:0.04em;">
-          🌱 10-Year ₹10,000/mo SIP Wealth Potential
+          🌱 Illustrative 10-year SIP scenario
         </div>
         <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
           <div style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--accent-emerald);">
@@ -1024,13 +1258,13 @@ window.openFundModal = function(fundId) {
           </span>
         </div>
         <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:4px;">
-          Invested ₹12.0 Lakhs • <strong>+${formatIndianCompact(sipGain)}</strong> Compounded Wealth Generated at ${fund.returns.y10}% 10Y CAGR.
+          ₹10,000 monthly for 10 years • ${formatINR(sipInvested)} contributed. Scenario assumes a constant ${fund.returns.y10}% annual return; historical returns are not forecasts.
         </div>
       </div>
 
       <div>
         <div style="font-size:0.76rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase; letter-spacing:0.04em;">
-          💰 5-Year ₹1,00,000 Lumpsum Growth
+          💰 Illustrative 5-year lump-sum scenario
         </div>
         <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
           <div style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--text-primary);">
@@ -1041,14 +1275,14 @@ window.openFundModal = function(fundId) {
           </span>
         </div>
         <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:4px;">
-          ⚡ <strong>Direct Plan Advantage:</strong> Zero broker commission saves an estimated <strong>${formatIndianCompact(directWealthSaved)}</strong> over 15 years on a ₹15,000/mo SIP!
+          <strong>Illustrative plan-cost difference:</strong> <strong>${formatIndianCompact(directWealthSaved)}</strong> under the assumptions used here. Actual costs vary by scheme and date.
         </div>
       </div>
     </div>
 
     <!-- Risk, Volatility & Quality Ratios Matrix -->
     <div style="margin-bottom:8px;">
-      <h4 style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em;">Risk-Adjusted Performance Ratios</h4>
+      <h4 style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em;">Risk and return metrics · where available</h4>
     </div>
     <div class="modal-ratios-grid">
       <div class="modal-ratio-pill">
@@ -1092,7 +1326,7 @@ window.openFundModal = function(fundId) {
                 <span class="mono-num" style="font-size:0.82rem; font-weight:700;">${pct.toFixed(1)}%</span>
               </div>
               <div class="sector-bar-track" style="height:7px;">
-                <div class="sector-bar-fill" style="width:${Math.min(100, pct * 2.2)}%; background:linear-gradient(90deg, #6366f1, #10b981);"></div>
+                <div class="sector-bar-fill" style="width:${Math.min(100, pct * 2.2)}%; background:linear-gradient(90deg, #E8B04A, #10b981);"></div>
               </div>
             </div>
           `).join("")}
@@ -1130,7 +1364,7 @@ window.openFundModal = function(fundId) {
                   </td>
                   <td style="padding:8px 10px;">
                     <div class="holding-bar-bg" style="height:6px; background:rgba(255,255,255,0.06); border-radius:999px; overflow:hidden;">
-                      <div class="holding-bar-fill" style="width:${Math.min(100, (h.percent / 12) * 100)}%; height:100%; background:${h.sector.includes('Cash') ? 'var(--text-muted)' : 'linear-gradient(90deg, #6366f1, #10b981)'};"></div>
+                      <div class="holding-bar-fill" style="width:${Math.min(100, (h.percent / 12) * 100)}%; height:100%; background:${h.sector.includes('Cash') ? 'var(--text-muted)' : 'linear-gradient(90deg, #E8B04A, #10b981)'};"></div>
                     </div>
                   </td>
                 </tr>
@@ -1181,8 +1415,7 @@ window.simulateFundInSipCalc = function(fundId) {
     const sel = document.getElementById("calcFundSelect");
     if (sel) sel.value = fundId;
     runCalculator();
-    const section = document.getElementById("sipCalculatorSection");
-    if (section) section.scrollIntoView({ behavior: "smooth" });
+    window.setAppPage("tools", "sipCalculatorSection", true);
     window.showToast(`🧮 Loaded ${fund.shortName} into SIP Calculator!`, true);
   }
 };
@@ -1281,7 +1514,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
             <div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <h3 class="amc-name">${house.name}</h3>
-                <span class="badge-cat" style="background:rgba(99,102,241,0.15); color:var(--accent-indigo); border:1px solid rgba(99,102,241,0.3);">${house.badge}</span>
+                <span class="badge-cat" style="background:rgba(232,176,74,0.15); color:var(--accent-indigo); border:1px solid rgba(232,176,74,0.3);">${house.badge}</span>
               </div>
               <div class="amc-sub-info">
                 <span>📍 HQ: <strong>${house.hq}</strong></span> • 
@@ -1415,7 +1648,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
                             </td>
                             <td>
                               <div class="holding-bar-bg">
-                                <div class="holding-bar-fill" style="width:${Math.min(100, (h.percent / 12) * 100)}%; background:${h.sector.includes('Cash') ? 'var(--text-muted)' : 'linear-gradient(90deg, #6366f1, #10b981)'};"></div>
+                                <div class="holding-bar-fill" style="width:${Math.min(100, (h.percent / 12) * 100)}%; background:${h.sector.includes('Cash') ? 'var(--text-muted)' : 'linear-gradient(90deg, #E8B04A, #10b981)'};"></div>
                               </div>
                             </td>
                           </tr>
@@ -1705,6 +1938,52 @@ window.filterFundHouses = function(houseId) {
 // Initialize DOM listeners
 document.addEventListener("DOMContentLoaded", () => {
   renderTicker();
+  routeToCurrentHash();
+  document.addEventListener("click", event => {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+    const targetId = link.getAttribute("href").slice(1);
+    const page = link.dataset.appPageLink || getAppPageForTarget(targetId);
+    if (!page) return;
+    event.preventDefault();
+    document.querySelectorAll(".nav-mega[open]").forEach(menu => { menu.open = false; });
+    window.setAppPage(page, targetId || null, true);
+  });
+  window.addEventListener("popstate", routeToCurrentHash);
+  const welcomeModal = document.getElementById("welcomeModal");
+  const welcomeForm = document.getElementById("welcomeExperienceForm");
+  if (welcomeModal && welcomeForm) {
+    let hasCompletedWelcome = false;
+    try { hasCompletedWelcome = Boolean(localStorage.getItem("returns_onboarding_v1")); } catch (_) {}
+    if (!hasCompletedWelcome) setTimeout(() => welcomeModal.classList.add("open"), 250);
+    welcomeForm.addEventListener("submit", finishWelcome);
+    document.getElementById("welcomeSkipBtn")?.addEventListener("click", () => {
+      try { localStorage.setItem("returns_onboarding_v1", JSON.stringify({ skipped: true })); } catch (_) {}
+      closeWelcomeModal();
+    });
+    welcomeModal.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeWelcomeModal();
+    });
+  }
+  navHistoryDbReady = openNavHistoryDatabase().then(db => {
+    navHistoryDb = db;
+    db.onversionchange = () => db.close();
+    refreshNavHistorySchemes();
+  }).catch(error => {
+    const countEl = document.getElementById("navDbRecordCount");
+    const message = document.getElementById("navHistoryMessage");
+    if (countEl) countEl.textContent = "Database unavailable";
+    if (message) message.textContent = `${error.message} Try opening the site in a modern browser.`;
+  });
+  document.getElementById("navHistorySearch")?.addEventListener("input", refreshNavHistorySchemes);
+  document.getElementById("navHistoryScheme")?.addEventListener("change", event => renderNavHistory(event.target.value));
+  document.getElementById("navHistoryExportBtn")?.addEventListener("click", exportNavHistoryCsv);
+  document.getElementById("btnLoadFullCatalog")?.addEventListener("click", () => window.loadFullMfapiCatalog(window.mfapiCatalogLoaded));
+  ["goalAmountInput", "goalYearsInput"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.addEventListener("input", renderGoalPlanner);
+  });
+  renderGoalPlanner();
 
   // Populate Calculator Fund Dropdown
   const calcFundSelect = document.getElementById("calcFundSelect");
@@ -1787,19 +2066,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Calculator Sliders
   const sipRange = document.getElementById("sipAmountRange");
+  const sipInput = document.getElementById("sipAmountInput");
   const stepUpRange = document.getElementById("stepUpRange");
+  const stepUpInput = document.getElementById("stepUpInput");
   const yearsRange = document.getElementById("calcYearsRange");
+  const yearsInput = document.getElementById("calcYearsInput");
+  const sipFrequencyRow = document.getElementById("sipFrequencyRow");
+  const periodsPerYear = { daily: 365, weekly: 52, monthly: 12 };
+  const frequencySuffix = { daily: "/ day", weekly: "/ week", monthly: "/ mo" };
+
+  const syncAmountControls = () => {
+    const amount = STATE.calc.mode === "sip"
+      ? STATE.calc.monthlyAmount * 12 / (periodsPerYear[STATE.calc.frequency] || 12)
+      : STATE.calc.lumpsumAmount;
+    if (sipInput) {
+      sipInput.min = "1";
+      sipInput.max = STATE.calc.mode === "sip" ? "100000" : "1000000";
+      sipInput.step = "1";
+      sipInput.value = amount;
+    }
+    if (sipRange) sipRange.value = STATE.calc.mode === "sip" ? amount : amount / 10;
+    document.getElementById("sipAmountBadge").textContent = STATE.calc.mode === "sip" ? `${formatINR(amount)} ${frequencySuffix[STATE.calc.frequency]}` : formatINR(amount);
+  };
 
   if (sipRange) {
     sipRange.addEventListener("input", e => {
       const val = parseInt(e.target.value, 10);
       if (STATE.calc.mode === "sip") {
-        STATE.calc.monthlyAmount = val;
-        document.getElementById("sipAmountBadge").textContent = formatINR(val) + " / mo";
+        STATE.calc.monthlyAmount = val * (periodsPerYear[STATE.calc.frequency] || 12) / 12;
+        document.getElementById("sipAmountBadge").textContent = `${formatINR(val)} ${frequencySuffix[STATE.calc.frequency]}`;
       } else {
         STATE.calc.lumpsumAmount = val * 10;
         document.getElementById("sipAmountBadge").textContent = formatINR(val * 10);
       }
+      if (sipInput) sipInput.value = STATE.calc.mode === "sip"
+        ? STATE.calc.monthlyAmount * 12 / (periodsPerYear[STATE.calc.frequency] || 12)
+        : STATE.calc.lumpsumAmount;
+      runCalculator();
+    });
+  }
+
+  if (sipInput) {
+    sipInput.addEventListener("input", e => {
+      if (e.target.value === "") return;
+      const min = 1;
+      const max = STATE.calc.mode === "sip" ? 100000 : 1000000;
+      const amount = Math.min(max, Math.max(min, Number(e.target.value)));
+      if (!Number.isFinite(amount)) return;
+      e.target.value = amount;
+      if (STATE.calc.mode === "sip") STATE.calc.monthlyAmount = amount * (periodsPerYear[STATE.calc.frequency] || 12) / 12;
+      else STATE.calc.lumpsumAmount = amount;
+      if (sipRange) sipRange.value = STATE.calc.mode === "sip" ? amount : amount / 10;
+      document.getElementById("sipAmountBadge").textContent = STATE.calc.mode === "sip" ? `${formatINR(amount)} ${frequencySuffix[STATE.calc.frequency]}` : formatINR(amount);
       runCalculator();
     });
   }
@@ -1807,6 +2125,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (stepUpRange) {
     stepUpRange.addEventListener("input", e => {
       STATE.calc.stepUpPercent = parseInt(e.target.value, 10);
+      if (stepUpInput) stepUpInput.value = STATE.calc.stepUpPercent;
+      document.getElementById("stepUpBadge").textContent = `${STATE.calc.stepUpPercent}% / yr`;
+      runCalculator();
+    });
+  }
+
+  if (stepUpInput) {
+    stepUpInput.addEventListener("input", e => {
+      if (e.target.value === "") return;
+      STATE.calc.stepUpPercent = Math.min(25, Math.max(0, Number(e.target.value)));
+      e.target.value = STATE.calc.stepUpPercent;
+      if (stepUpRange) stepUpRange.value = STATE.calc.stepUpPercent;
       document.getElementById("stepUpBadge").textContent = `${STATE.calc.stepUpPercent}% / yr`;
       runCalculator();
     });
@@ -1815,6 +2145,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (yearsRange) {
     yearsRange.addEventListener("input", e => {
       STATE.calc.years = parseInt(e.target.value, 10);
+      if (yearsInput) yearsInput.value = STATE.calc.years;
+      document.getElementById("calcYearsBadge").textContent = `${STATE.calc.years} Years`;
+      runCalculator();
+    });
+  }
+
+  if (yearsInput) {
+    yearsInput.addEventListener("input", e => {
+      if (e.target.value === "") return;
+      STATE.calc.years = Math.min(50, Math.max(1, Number(e.target.value)));
+      e.target.value = STATE.calc.years;
+      if (yearsRange) yearsRange.value = STATE.calc.years;
       document.getElementById("calcYearsBadge").textContent = `${STATE.calc.years} Years`;
       runCalculator();
     });
@@ -1825,9 +2167,20 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-calc-mode]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       STATE.calc.mode = btn.dataset.calcMode;
-      const val = parseInt(sipRange.value, 10);
-      document.getElementById("amountLabelText").textContent = STATE.calc.mode === "sip" ? "Monthly SIP Investment" : "One-Time Lumpsum Investment";
-      document.getElementById("sipAmountBadge").textContent = STATE.calc.mode === "sip" ? formatINR(val) + " / mo" : formatINR(val * 10);
+      if (sipFrequencyRow) sipFrequencyRow.hidden = STATE.calc.mode !== "sip";
+      document.getElementById("amountLabelText").textContent = STATE.calc.mode === "sip" ? `${STATE.calc.frequency[0].toUpperCase()}${STATE.calc.frequency.slice(1)} SIP Investment` : "One-Time Lumpsum Investment";
+      syncAmountControls();
+      runCalculator();
+    });
+  });
+
+  document.querySelectorAll("[data-sip-frequency]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-sip-frequency]").forEach(option => option.classList.remove("active"));
+      btn.classList.add("active");
+      STATE.calc.frequency = btn.dataset.sipFrequency;
+      document.getElementById("amountLabelText").textContent = `${STATE.calc.frequency[0].toUpperCase()}${STATE.calc.frequency.slice(1)} SIP Investment`;
+      syncAmountControls();
       runCalculator();
     });
   });
@@ -1839,7 +2192,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const html = document.documentElement;
       const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
       html.setAttribute("data-theme", next);
-      themeBtn.textContent = next === "light" ? "🌙 Dark Mode" : "☀️ Light Mode";
+      themeBtn.innerHTML = `<span aria-hidden="true">${next === "light" ? "🌙" : "☀️"}</span>`;
+      const nextModeLabel = `Switch to ${next === "light" ? "dark" : "light"} mode`;
+      themeBtn.setAttribute("aria-label", nextModeLabel);
+      themeBtn.title = nextModeLabel;
       renderComparisonStudio();
     });
   }
@@ -1871,12 +2227,17 @@ document.addEventListener("DOMContentLoaded", () => {
   renderFundHousesDirectory("all");
 
   // Automatically sync daily NAVs & recalculate 1Y/3Y/5Y/10Y CAGRs from AMFI India API
-  syncAllAmfiFunds(false);
+  // Refresh from MFAPI on every full site open, even when today's local cache exists.
+  syncAllAmfiFunds(true);
 
   // Check every 30 minutes if the date has rolled over to a new trading day
   setInterval(() => {
     syncAllAmfiFunds(false);
   }, 30 * 60 * 1000);
+});
+
+window.addEventListener("pageshow", event => {
+  if (event.persisted) window.syncAllAmfiFunds(true);
 });
 
 // ============================================================================
@@ -1925,9 +2286,11 @@ function computeCagrFromNavHistory(navArray, targetYears) {
 }
 
 window.syncAllAmfiFunds = async function(forceRefresh = false) {
+  if (navHistoryDbReady && !navHistoryDb) await navHistoryDbReady;
   const statusTextEl = document.getElementById("syncStatusText");
   const syncDotEl = document.getElementById("syncDot");
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const cacheStorageKey = "returns_amfi_daily_cache_v2";
 
   // Check if we already synced today's AMFI NAVs
@@ -1936,7 +2299,7 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
       const rawCache = localStorage.getItem(cacheStorageKey);
       if (rawCache) {
         const parsed = JSON.parse(rawCache);
-        if (parsed && parsed.syncDate === todayKey && parsed.fundsById) {
+        if (parsed && parsed.syncDate === todayKey && parsed.fundsById && await areFundHistoriesSaved()) {
           window.MUTUAL_FUNDS.forEach(f => {
             const cached = parsed.fundsById[f.id];
             if (cached) {
@@ -1948,6 +2311,8 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
           });
           if (statusTextEl) statusTextEl.textContent = `AMFI Daily Updated (${parsed.latestNavDate || todayKey})`;
           if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
+          const freshness = document.getElementById("dataFreshnessStatus");
+          if (freshness) freshness.textContent = `AMFI NAV date: ${parsed.latestNavDate || "date unavailable"} (cached today)`;
           renderFundsTable();
           renderComparisonStudio();
           runCalculator();
@@ -1988,6 +2353,7 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
           const json = await resp.json();
           const navList = json && json.data;
           if (!Array.isArray(navList) || navList.length === 0) return;
+          if (navHistoryDb) await saveNavHistory(schemeCode, fund.name, navList, false);
 
           const latestNav = parseFloat(navList[0].nav);
           const prevNav = navList[1] ? parseFloat(navList[1].nav) : latestNav;
@@ -2025,6 +2391,7 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
   }
 
   if (updatedCount > 0) {
+    if (navHistoryDb) await refreshNavHistorySchemes();
     try {
       localStorage.setItem(cacheStorageKey, JSON.stringify({
         syncDate: todayKey,
@@ -2038,9 +2405,13 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
     if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
     const lastSyncEl = document.getElementById("amfiLastSyncText");
     if (lastSyncEl) lastSyncEl.textContent = `Latest NAVs: ${latestSeenNavDate || todayKey}`;
+    const freshness = document.getElementById("dataFreshnessStatus");
+    if (freshness) freshness.textContent = `AMFI NAV date: ${latestSeenNavDate || "date unavailable"} • refreshed just now`;
   } else {
     if (statusTextEl) statusTextEl.textContent = `Daily Snapshot (${todayKey})`;
     if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
+    const freshness = document.getElementById("dataFreshnessStatus");
+    if (freshness) freshness.textContent = "AMFI refresh unavailable; sample reference values may be shown.";
   }
 
   renderFundsTable();
@@ -2050,7 +2421,7 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
   if (typeof renderMarketNews === "function") renderMarketNews();
 };
 
-// Live Search 15,000+ AMFI Mutual Funds & Auto-Import into Compare Studio
+// Search available AMFI/MFAPI schemes and add selected results to comparison
 let amfiSearchDebounceTimer = null;
 
 window.searchLiveAmfiSchemes = function(query) {
@@ -2113,6 +2484,7 @@ window.importAmfiSchemeByCode = async function(schemeCode) {
     const meta = json.meta || {};
     const navList = json.data || [];
     if (!navList.length) throw new Error("No NAV history");
+    if (navHistoryDb) await saveNavHistory(schemeCode, meta.scheme_name || `AMFI Scheme ${schemeCode}`, navList);
 
     const latestNav = parseFloat(navList[0].nav) || 100;
     const prevNav = navList[1] ? parseFloat(navList[1].nav) : latestNav;
@@ -2262,12 +2634,15 @@ window.updateDragSimulator = function() {
 
   const explanationEl = document.getElementById("dragExplanationText");
   if (explanationEl) {
-    explanationEl.innerHTML = `Over ${years} years with a ${formatINR(monthlySip)} monthly SIP, investing in <strong>Direct Plan</strong> protects <strong style="color:var(--accent-emerald);">${formatIndianCompact(lostWealth)}</strong> from being siphoned off as distributor commissions!`;
+    explanationEl.innerHTML = `Illustrative difference between the selected plan return assumptions over ${years} years at ${formatINR(monthlySip)} per month: <strong style="color:var(--accent-emerald);">${formatIndianCompact(lostWealth)}</strong>. Actual outcomes and expenses vary by scheme and period; this is not a guaranteed saving.`;
   }
 };
 
 // Ensure Drag simulator and saved device view run on initial load as well
 document.addEventListener("DOMContentLoaded", () => {
+  const copyrightYear = document.getElementById("copyrightYear");
+  if (copyrightYear) copyrightYear.textContent = String(new Date().getFullYear());
+
   setTimeout(() => {
     updateDragSimulator();
   }, 200);
@@ -2346,6 +2721,7 @@ window.copyPhoneUrl = function() {};
 // ============================================================================
 
 window.globalMfapiResults = [];
+window.mfapiCatalogLoaded = false;
 window.globalMfapiDebounceTimer = null;
 window.amfiNavCache = {}; // Cache for { schemeCode: { nav, navDate, dayChange, cagr: {y1, y3, y5, y10} } }
 
@@ -2385,6 +2761,80 @@ function filterMfapiList(list) {
   });
 }
 
+function filterFullMfapiCatalog() {
+  const query = (document.getElementById("globalMfapiSearchInput")?.value || "").trim().toLowerCase();
+  const matches = window.globalMfapiResults.filter(item => !query || String(item.schemeName || "").toLowerCase().includes(query) || String(item.schemeCode || "").includes(query));
+  const filtered = filterMfapiList(matches);
+  const countText = document.getElementById("mfapiSearchCountText");
+  if (countText) countText.textContent = query.length < 2
+    ? `Full catalog ready: ${filtered.length.toLocaleString("en-IN")} schemes. Type 2+ characters to search.`
+    : `Found ${filtered.length.toLocaleString("en-IN")} matching schemes in the full Indian registry.`;
+  renderMfapiSchemeCards(filtered.slice(0, 15), query.length >= 2);
+}
+
+window.loadFullMfapiCatalog = async function(forceRefresh = false) {
+  const button = document.getElementById("btnLoadFullCatalog");
+  const countText = document.getElementById("mfapiSearchCountText");
+  const loading = document.getElementById("mfapiLoadingIndicator");
+  const loadingText = document.getElementById("mfapiLoadingText");
+  if (window.mfapiCatalogLoaded && !forceRefresh) return filterFullMfapiCatalog();
+  if (button) { button.disabled = true; button.textContent = "Loading catalog…"; }
+  if (loading) loading.style.display = "block";
+  try {
+    let catalog = [];
+    if (navHistoryDb && !forceRefresh) {
+      catalog = await new Promise((resolve, reject) => {
+        const request = navHistoryDb.transaction("schemeCatalog", "readonly").objectStore("schemeCatalog").getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    if (!catalog.length) {
+      if (forceRefresh && navHistoryDb) {
+        await new Promise((resolve, reject) => {
+          const transaction = navHistoryDb.transaction("schemeCatalog", "readwrite");
+          transaction.objectStore("schemeCatalog").clear();
+          transaction.oncomplete = resolve;
+          transaction.onerror = () => reject(transaction.error);
+        });
+      }
+      const pageSize = 1000;
+      let offset = 0;
+      for (;;) {
+        if (loadingText) loadingText.textContent = `Loading Indian fund registry: ${catalog.length.toLocaleString("en-IN")} schemes…`;
+        const response = await fetch(`https://api.mfapi.in/mf?limit=${pageSize}&offset=${offset}`);
+        if (!response.ok) throw new Error(`Registry request failed (${response.status}).`);
+        const payload = await response.json();
+        const page = Array.isArray(payload) ? payload : (payload.data || payload.schemes || []);
+        if (!Array.isArray(page) || !page.length) break;
+        const normalized = page.filter(item => item.schemeCode && item.schemeName).map(item => ({ schemeCode: String(item.schemeCode), schemeName: String(item.schemeName) }));
+        catalog.push(...normalized);
+        offset += page.length;
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+      if (navHistoryDb && catalog.length) {
+        await new Promise((resolve, reject) => {
+          const transaction = navHistoryDb.transaction("schemeCatalog", "readwrite");
+          const store = transaction.objectStore("schemeCatalog");
+          catalog.forEach(item => store.put(item));
+          transaction.oncomplete = resolve;
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error || new Error("Catalog cache write was cancelled."));
+        });
+      }
+    }
+    window.globalMfapiResults = catalog;
+    window.mfapiCatalogLoaded = true;
+    filterFullMfapiCatalog();
+  } catch (error) {
+    if (countText) countText.textContent = `Could not load the full catalog: ${error.message} You can still search schemes online.`;
+    window.showToast("Could not load the full Indian fund catalog. Please try again.", false);
+  } finally {
+    if (loading) loading.style.display = "none";
+    if (button) { button.disabled = false; button.textContent = window.mfapiCatalogLoaded ? "↻ Refresh Full Catalog" : "📚 Load Full Indian Fund Catalog"; }
+  }
+};
+
 // Global MFAPI Search Handler
 window.handleGlobalMfapiSearch = function(query) {
   const q = (query || "").trim();
@@ -2396,12 +2846,13 @@ window.handleGlobalMfapiSearch = function(query) {
   if (clearBtn) clearBtn.style.display = q ? "block" : "none";
 
   if (q.length < 2) {
-    if (countText) countText.textContent = "Type at least 2 characters to search ~45,000+ schemes";
+    if (countText) countText.textContent = "Enter at least 2 characters to search the available scheme catalog";
     return;
   }
 
   clearTimeout(window.globalMfapiDebounceTimer);
   window.globalMfapiDebounceTimer = setTimeout(async () => {
+    if (window.mfapiCatalogLoaded) return filterFullMfapiCatalog();
     if (loading) loading.style.display = "block";
     if (container) container.innerHTML = "";
     if (countText) countText.textContent = `Searching AMFI India database for "${q}"...`;
@@ -2449,6 +2900,7 @@ window.handleGlobalMfapiSearch = function(query) {
 // Filter change handler
 window.handleMfapiFilterChange = function() {
   if (!window.globalMfapiResults || window.globalMfapiResults.length === 0) return;
+  if (window.mfapiCatalogLoaded) return filterFullMfapiCatalog();
   const filtered = filterMfapiList(window.globalMfapiResults);
   const countText = document.getElementById("mfapiSearchCountText");
   if (countText) {
@@ -2485,7 +2937,7 @@ window.clearGlobalMfapiSearch = function() {
 };
 
 // Render Scheme Cards in All Indian Mutual Funds Explorer
-function renderMfapiSchemeCards(schemes) {
+function renderMfapiSchemeCards(schemes, autoFetch = true) {
   const container = document.getElementById("mfapiResultsContainer");
   if (!container) return;
 
@@ -2549,7 +3001,7 @@ function renderMfapiSchemeCards(schemes) {
             </div>
           ` : `
             <div style="grid-column: 1/-1; display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:0.75rem; color:var(--text-muted);">Real-time NAV not fetched</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">Latest declared NAV not fetched</span>
               <button class="btn btn-sm" onclick="fetchCardNav(${item.schemeCode})" style="padding:2px 8px; font-size:0.70rem;">⚡ Load Live NAV</button>
             </div>
           `}
@@ -2568,7 +3020,7 @@ function renderMfapiSchemeCards(schemes) {
   }).join("");
 
   // Automatically fetch live NAV for top 4 schemes to give instant live gratification
-  schemes.slice(0, 4).forEach(item => {
+  if (autoFetch) schemes.slice(0, 4).forEach(item => {
     if (!window.amfiNavCache[item.schemeCode]) {
       fetchCardNav(item.schemeCode);
     }
@@ -2587,6 +3039,7 @@ window.fetchCardNav = async function(schemeCode) {
     const json = await resp.json();
     const navList = json.data || [];
     if (!navList.length) throw new Error("No NAV data");
+    if (navHistoryDb) await saveNavHistory(schemeCode, json.meta?.scheme_name || `AMFI Scheme ${schemeCode}`, navList);
 
     const latestNav = parseFloat(navList[0].nav) || 100;
     const navDate = navList[0].date || "";
@@ -2661,6 +3114,7 @@ window.importAmfiSchemeToScreener = async function(schemeCode) {
     const meta = json.meta || {};
     const navList = json.data || [];
     if (!navList.length) throw new Error("No NAV history");
+    if (navHistoryDb) await saveNavHistory(schemeCode, meta.scheme_name || `AMFI Scheme ${schemeCode}`, navList);
 
     const latestNav = parseFloat(navList[0].nav) || 100;
     const prevNav = navList[1] ? parseFloat(navList[1].nav) : latestNav;
@@ -2763,8 +3217,7 @@ window.compareAmfiSchemeFromExplorer = async function(schemeCode) {
   renderComparisonStudio();
   if (typeof renderComparisonSlots === "function") renderComparisonSlots();
 
-  const studio = document.getElementById("comparisonStudioSection");
-  if (studio) studio.scrollIntoView({ behavior: "smooth" });
+  window.setAppPage("compare", "comparisonStudioSection", true);
 
   window.showToast(`⚖️ ${fund.shortName} added to Comparison Studio!`, true);
 };
@@ -2791,6 +3244,7 @@ window.viewAmfiSchemeDetails = async function(schemeCode) {
     const meta = json.meta || {};
     const navList = json.data || [];
     if (!navList.length) throw new Error("No NAV data found");
+    if (navHistoryDb) await saveNavHistory(schemeCode, meta.scheme_name || `AMFI Scheme ${schemeCode}`, navList);
 
     const latestNav = parseFloat(navList[0].nav) || 0;
     const prevNav = navList[1] ? parseFloat(navList[1].nav) : latestNav;
@@ -3070,3 +3524,102 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 150);
 });
+
+function initializePremiumExperience() {
+  const homeSearchForm = document.getElementById("homeFundSearchForm");
+  const homeSearchInput = document.getElementById("homeFundSearch");
+  if (homeSearchForm && homeSearchInput) {
+    homeSearchForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const query = homeSearchInput.value.trim();
+      if (!query) {
+        homeSearchInput.focus();
+        return;
+      }
+      window.setAppPage("details", "fundDetailsSection", true);
+      const detailSearch = document.getElementById("detailFundSearch");
+      if (detailSearch) {
+        detailSearch.value = query;
+        renderFundDetailsResults(query);
+      }
+    });
+  }
+
+  const detailSearch = document.getElementById("detailFundSearch");
+  if (detailSearch) {
+    renderFundDetailsResults();
+    detailSearch.addEventListener("input", () => renderFundDetailsResults(detailSearch.value));
+  }
+
+  const revealTargets = document.querySelectorAll(
+    ".hero-copy, .hero-visual, .hero-stats, .app-page-section:not(#heroOverview) > .section-header, .app-page-section:not(#heroOverview) > .controls-bar, .app-page-section:not(#heroOverview) > .panel-card, .app-page-section:not(#heroOverview) > .table-wrapper"
+  );
+  revealTargets.forEach(element => element.setAttribute("data-reveal", ""));
+  document.body.classList.add("motion-ready");
+
+  if ("IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        revealObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -4% 0px" });
+    revealTargets.forEach(element => revealObserver.observe(element));
+  } else {
+    revealTargets.forEach(element => element.classList.add("is-visible"));
+  }
+
+  const visual = document.getElementById("heroVisual");
+  const hero = document.getElementById("heroOverview");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (visual && hero && !reduceMotion) {
+    visual.addEventListener("pointermove", event => {
+      if (event.pointerType === "touch") return;
+      const bounds = visual.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+      const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+      visual.style.setProperty("--pointer-x", `${x * 7}deg`);
+      visual.style.setProperty("--pointer-y", `${y * -7}deg`);
+      hero.style.setProperty("--spot-x", `${(x + 0.5) * 100}%`);
+      hero.style.setProperty("--spot-y", `${(y + 0.5) * 100}%`);
+    });
+    visual.addEventListener("pointerleave", () => {
+      visual.style.setProperty("--pointer-x", "0deg");
+      visual.style.setProperty("--pointer-y", "0deg");
+      hero.style.setProperty("--spot-x", "78%");
+      hero.style.setProperty("--spot-y", "26%");
+    });
+  }
+
+  const cardSelector = ".stat-card, .panel-card, .result-box, .fund-card, .amc-card, .news-card, .nav-history-card";
+  document.addEventListener("pointermove", event => {
+    if (event.pointerType !== "mouse") return;
+    const card = event.target.closest(cardSelector);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!card) return;
+    const bounds = card.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    card.classList.add("premium-tilt");
+    card.style.setProperty("--tilt-x", `${x * 3}deg`);
+    card.style.setProperty("--tilt-y", `${y * -3}deg`);
+  }, { passive: true });
+  document.addEventListener("pointerout", event => {
+    const card = event.target.closest?.(cardSelector);
+    if (!card || card.contains(event.relatedTarget)) return;
+    card.style.setProperty("--tilt-x", "0deg");
+    card.style.setProperty("--tilt-y", "0deg");
+  });
+
+  document.querySelectorAll(".hero-actions .btn-primary").forEach(button => {
+    button.addEventListener("pointermove", event => {
+      if (event.pointerType !== "mouse") return;
+      const bounds = button.getBoundingClientRect();
+      button.style.translate = `${((event.clientX - bounds.left) / bounds.width - 0.5) * 5}px ${((event.clientY - bounds.top) / bounds.height - 0.5) * 5}px`;
+    });
+    button.addEventListener("pointerleave", () => { button.style.translate = ""; });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", initializePremiumExperience);
