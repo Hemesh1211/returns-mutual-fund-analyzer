@@ -479,8 +479,17 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
             <span style="font-weight:700;">Select Mutual Fund Scheme</span>
             <div class="horizon-group">
-              <button class="horizon-btn active" data-calc-mode="sip">Monthly SIP</button>
+              <button class="horizon-btn active" data-calc-mode="sip">SIP</button>
               <button class="horizon-btn" data-calc-mode="lumpsum">One-Time Lumpsum</button>
+            </div>
+          </div>
+
+          <div class="sip-frequency-row" id="sipFrequencyRow">
+            <span>Contribution frequency</span>
+            <div class="horizon-group" role="group" aria-label="SIP contribution frequency">
+              <button type="button" class="horizon-btn" data-sip-frequency="daily">Daily</button>
+              <button type="button" class="horizon-btn" data-sip-frequency="weekly">Weekly</button>
+              <button type="button" class="horizon-btn active" data-sip-frequency="monthly">Monthly</button>
             </div>
           </div>
 
@@ -494,8 +503,8 @@
               <span class="form-val-badge" id="sipAmountBadge">₹15,000 / mo</span>
             </div>
             <div class="calc-range-keyboard">
-              <input type="range" id="sipAmountRange" min="1000" max="100000" step="1000" value="15000" />
-              <input type="number" id="sipAmountInput" class="calc-keyboard-input" min="1000" max="100000" step="1000" value="15000" inputmode="numeric" aria-label="Investment amount in rupees" />
+              <input type="range" id="sipAmountRange" min="1" max="100000" step="1" value="15000" />
+              <input type="number" id="sipAmountInput" class="calc-keyboard-input" min="1" max="100000" step="1" value="15000" inputmode="numeric" aria-label="Investment amount in rupees" />
             </div>
           </div>
 
@@ -516,8 +525,8 @@
               <span class="form-val-badge" id="calcYearsBadge">10 Years</span>
             </div>
             <div class="calc-range-keyboard">
-              <input type="range" id="calcYearsRange" min="1" max="25" step="1" value="10" />
-              <input type="number" id="calcYearsInput" class="calc-keyboard-input" min="1" max="25" step="1" value="10" inputmode="numeric" aria-label="Investment duration in years" />
+              <input type="range" id="calcYearsRange" min="1" max="50" step="1" value="10" />
+              <input type="number" id="calcYearsInput" class="calc-keyboard-input" min="1" max="50" step="1" value="10" inputmode="numeric" aria-label="Investment duration in years" />
             </div>
           </div>
         </div>
