@@ -194,14 +194,8 @@ window.setAppPage = function(page, targetId = null, updateAddress = false) {
   if (updateAddress && destination) history.pushState({ page }, "", `#${destination}`);
   requestAnimationFrame(() => {
     const target = document.getElementById(destination);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.setTimeout(() => {
-        const stickyHeaderBottom = document.querySelector(".navbar")?.getBoundingClientRect().bottom || 0;
-        const hiddenByHeader = stickyHeaderBottom + 20 - target.getBoundingClientRect().top;
-        if (hiddenByHeader > 0) window.scrollBy({ top: hiddenByHeader, behavior: "smooth" });
-      }, 350);
-    }
+    const pageHeading = target?.querySelector(".section-header") || target;
+    if (pageHeading) pageHeading.scrollIntoView({ behavior: "smooth", block: "start" });
     else window.scrollTo(0, 0);
   });
 };
