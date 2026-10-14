@@ -1,3 +1,4 @@
+Warning: fs was declared with const; use let for reassignable variables.
 // Returns — Indian Mutual Fund Analytics & Return Comparison Engine
 
 const STATE = {
@@ -22,6 +23,8 @@ const STATE = {
 };
 
 const CHART_COLORS = ["#C6A76A", "#9DB6C7", "#7D91A6", "#B28C82"];
+let fundsPage = 0;
+const FUNDS_PAGE_SIZE = 50;
 const APP_PAGE_SECTIONS = {
   home: ["heroOverview", "homeSection"],
   categories: ["explorerSection", "fundHousesSection", "allIndianFundsSection"],
@@ -129,7 +132,7 @@ async function areFundHistoriesSaved() {
     request.onerror = () => reject(request.error);
   });
   const codeMap = window.AMFI_SCHEME_CODES || {};
-  const schemeCodes = window.MUTUAL_FUNDS.map(fund => String(fund.amfiCode || codeMap[fund.id] || "")).filter(Boolean);
+  const schemeCodes = window.MUTUAL_FUNDS.filter(fund => !fund.dataStatus).map(fund => String(fund.amfiCode || codeMap[fund.id] || "")).filter(Boolean);
   return schemeCodes.every(code => known.has(code));
 }
 
@@ -234,12 +237,12 @@ function renderFundDetailsResults(query = "") {
 
   const status = document.createElement("p");
   status.className = "detail-results-count";
-  status.textContent = `${funds.length.toLocaleString("en-IN")} ${funds.length === 1 ? "scheme" : "schemes"} available`;
+  status.textContent = `${funds.length.toLocaleString("en-IN")} ${funds.length === 1 ? "scheme" : "schemes"} available${funds.length > 100 ? " • showing first 100, refine your search to narrow the list" : ""}`;
   container.append(status);
 
   const grid = document.createElement("div");
   grid.className = "detail-fund-grid";
-  funds.forEach(fund => {
+  funds.slice(0, 100).forEach(fund => {
     const card = document.createElement("article");
     card.className = "detail-fund-card";
     const category = document.createElement("span");
@@ -338,7 +341,10 @@ function renderFundsTable() {
   const tbody = document.getElementById("fundsTableBody");
   const countEl = document.getElementById("fundsCountBadge");
   const funds = getFilteredFunds();
-  if (countEl) countEl.textContent = `${funds.length} Direct Growth Schemes`;
+  const totalPages = Math.max(1, Math.ceil(funds.length / FUNDS_PAGE_SIZE));
+  fundsPage = Math.min(fundsPage, totalPages - 1);
+  const pageFunds = funds.slice(fundsPage * FUNDS_PAGE_SIZE, (fundsPage + 1) * FUNDS_PAGE_SIZE);
+  if (countEl) countEl.textContent = `${funds.length.toLocaleString("en-IN")} Direct Growth Schemes`;
 
   // Estimate ₹1,00,000 lumpsum value for selected horizon
   const horizonYearsMap = { y1: 1, y3: 3, y5: 5, y10: 10 };
@@ -349,7 +355,7 @@ function renderFundsTable() {
     thCorpus.textContent = `₹1L Value (${horizonLabelMap[STATE.horizon]})`;
   }
 
-  tbody.innerHTML = funds.map(fund => {
+  tbody.innerHTML = pageFunds.map(fund => {
     const isCompared = STATE.compareIds.includes(fund.id);
     const cagr = fund.returns?.[STATE.horizon];
     const bmarkCagr = fund.benchmarkReturns?.[STATE.horizon];
@@ -410,9 +416,34 @@ function renderFundsTable() {
     `;
   }).join("");
 
-  renderFundsCards(funds, yrs);
+  renderFundsCards(pageFunds, yrs);
+  renderFundsPagination(funds.length, totalPages);
   updateCompareCount();
 }
+
+function renderFundsPagination(total, totalPages) {
+  const tbody = document.getElementById("fundsTableBody");
+  if (!tbody) return;
+  let container = document.getElementById("fundsPagination");
+  if (!container) {
+    container = document.createElement("nav");
+    container.id = "fundsPagination";
+    container.setAttribute("aria-label", "Fund list pages");
+    container.className = "funds-pagination";
+    const wrapper = tbody.closest(".table-wrapper") || tbody.closest("table")?.parentElement;
+    if (wrapper) wrapper.insertAdjacentElement("afterend", container);
+  }
+  if (!container) return;
+  if (!total) { container.innerHTML = ""; return; }
+  const first = fundsPage * FUNDS_PAGE_SIZE + 1;
+  const last = Math.min(total, first + FUNDS_PAGE_SIZE - 1);
+  container.innerHTML = `<span>Showing ${first.toLocaleString("en-IN")}–${last.toLocaleString("en-IN")} of ${total.toLocaleString("en-IN")}</span><div><button class="btn btn-sm" onclick="changeFundsPage(-1)" ${fundsPage === 0 ? "disabled" : ""} aria-label="Previous page">Previous</button><span class="funds-page-count">Page ${fundsPage + 1} of ${totalPages}</span><button class="btn btn-sm" onclick="changeFundsPage(1)" ${fundsPage >= totalPages - 1 ? "disabled" : ""} aria-label="Next page">Next</button></div>`;
+}
+window.changeFundsPage = function(delta) {
+  const totalPages = Math.max(1, Math.ceil(getFilteredFunds().length / FUNDS_PAGE_SIZE));
+  fundsPage = Math.max(0, Math.min(totalPages - 1, fundsPage + delta));
+  renderFundsTable();
+};
 
 // Render Mobile Phone Optimized Cards
 function renderFundsCards(funds, yrs) {
@@ -1127,6 +1158,34 @@ function runCalculator() {
 // AESTHETIC DEEP-DIVE MUTUAL FUND MODAL & SELECTION ENGINE
 // ============================================================================
 
+window.loadFundHistory = async function(fundId) {
+  const fund = window.MUTUAL_FUNDS.find(item => item.id === fundId);
+  if (!fund || !fund.amfiCode) return;
+  const button = document.getElementById(`load-history-${fundId}`);
+  if (button) { button.disabled = true; button.textContent = "Loading NAV history…"; }
+  try {
+    const response = await fetch(`https://api.mfapi.in/mf/${fund.amfiCode}`);
+    if (!response.ok) throw new Error("NAV history could not be reached.");
+    const payload = await response.json();
+    const history = Array.isArray(payload.data) ? payload.data : [];
+    if (!history.length) throw new Error("No NAV history is available for this scheme yet.");
+    const latest = Number.parseFloat(history[0].nav);
+    if (Number.isFinite(latest)) fund.nav = +latest.toFixed(4);
+    fund.navDate = history[0].date || fund.navDate;
+    for (const years of [1, 3, 5, 10]) {
+      const value = computeCagrFromNavHistory(history, years);
+      if (value !== null) fund.returns[`y${years}`] = value;
+    }
+    if (navHistoryDb) await saveNavHistory(fund.amfiCode, fund.name, history);
+    renderFundsTable();
+    openFundModal(fundId);
+    window.showToast?.("NAV history loaded from MFAPI.");
+  } catch (error) {
+    if (button) { button.disabled = false; button.textContent = "Load NAV history"; }
+    window.showToast?.(error.message || "NAV history is temporarily unavailable.");
+  }
+};
+
 window.openFundModal = function(fundId) {
   const fund = window.MUTUAL_FUNDS.find(f => f.id === fundId);
   if (!fund) return;
@@ -1136,7 +1195,7 @@ window.openFundModal = function(fundId) {
 
   if (fund.dataStatus) {
     const returns = ["y1", "y3", "y5", "y10"].map((key, i) => `<div class="modal-cagr-card"><div class="cagr-lbl">${["1 Year", "3 Year", "5 Year", "10 Year"][i]}</div><div class="cagr-val">${displayMetric(fund.returns?.[key], 1, "%")}</div></div>`).join("");
-    content.innerHTML = `<div class="modal-header-row"><div><span class="badge-cat">${fund.category} • ${fund.plan}</span><h2 class="modal-scheme-title">${fund.name}</h2><div class="modal-scheme-sub">${fund.amc} • AMFI scheme ${fund.amfiCode}</div></div><button class="btn" onclick="closeFundModal()">✕</button></div><section class="modal-hero-nav-card"><div><div>Latest NAV</div><strong>₹${displayMetric(fund.nav, 4)}</strong><div>${fund.navDate || "Syncing NAV"}</div></div><div><div>Risk</div><strong>Check the scheme’s current riskometer</strong></div></section><h3>Trailing returns</h3><div class="modal-cagr-grid">${returns}</div><p class="home-data-note">Returns are calculated from the available NAV history and refreshed from MFAPI when available. Expense ratios, AUM, holdings, manager, and benchmark-relative risk metrics are not included in this site’s current dataset. Refer to the fund house’s latest scheme documents.</p><button class="compare-toggle-btn ${STATE.compareIds.includes(fund.id) ? "added" : ""}" onclick="toggleCompare('${fund.id}')">${STATE.compareIds.includes(fund.id) ? "✓ Comparing" : "+ Compare"}</button>`;
+    content.innerHTML = `<div class="modal-header-row"><div><span class="badge-cat">${fund.category} • ${fund.plan}</span><h2 class="modal-scheme-title">${fund.name}</h2><div class="modal-scheme-sub">${fund.amc} • AMFI scheme ${fund.amfiCode}</div></div><button class="btn" onclick="closeFundModal()">✕</button></div><section class="modal-hero-nav-card"><div><div>Latest NAV</div><strong>₹${displayMetric(fund.nav, 4)}</strong><div>${fund.navDate || "Syncing NAV"}</div></div><div><div>Risk</div><strong>Check the scheme’s current riskometer</strong></div></section><h3>Trailing returns</h3><div class="modal-cagr-grid">${returns}</div><p class="home-data-note">${fund.returns?.y1 != null || fund.returns?.y3 != null || fund.returns?.y5 != null ? "Returns are calculated from the available NAV history." : "Historical returns, expense ratios, AUM, holdings, manager, and benchmark-relative risk metrics are not included until verified. Refer to the fund house’s latest scheme documents."} Current NAV is from the AMFI catalog. Figures can change.</p><div class="modal-action-row"><button id="load-history-${fund.id}" class="btn" onclick="loadFundHistory('${fund.id}')">${fund.returns?.y1 != null || fund.returns?.y3 != null || fund.returns?.y5 != null ? "Refresh NAV history" : "Load NAV history"}</button><button class="compare-toggle-btn ${STATE.compareIds.includes(fund.id) ? "added" : ""}" onclick="toggleCompare('${fund.id}')">${STATE.compareIds.includes(fund.id) ? "✓ Comparing" : "+ Compare"}</button></div>`;
     modal.classList.add("active");
     return;
   }
@@ -1536,6 +1595,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
       (f.amc && f.amc.toLowerCase().includes(house.shortName.toLowerCase())) ||
       (f.amc && f.amc.toLowerCase().includes(house.name.toLowerCase().replace(" mutual fund", "")))
     );
+    const visibleSchemes = filterHouseId === "all" ? schemes.slice(0, 8) : schemes;
 
     return `
       <div class="amc-card" id="amc-card-${house.id}">
@@ -1565,7 +1625,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
 
         <!-- Schemes List under this AMC -->
         <div class="amc-schemes-list">
-          ${schemes.map(fund => {
+          ${visibleSchemes.map(fund => {
             const isCompared = STATE.compareIds.includes(fund.id);
             const starsStr = "★".repeat(safeRating(fund.rating)) + "☆".repeat(5 - safeRating(fund.rating));
             const holdings = fund.holdings || [];
@@ -1703,6 +1763,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
               </div>
             `;
           }).join("")}
+          ${filterHouseId === "all" && schemes.length > visibleSchemes.length ? `<button class="btn btn-sm" style="margin-top:10px;" onclick="filterFundHouses('${house.id}')">View all ${schemes.length} schemes</button>` : ""}
         </div>
 
         <!-- Interactive AMFI Schemes Explorer for this Fund House (Note All Schemes) -->
@@ -2034,8 +2095,34 @@ document.addEventListener("DOMContentLoaded", () => {
   if (searchInput) {
     searchInput.addEventListener("input", e => {
       STATE.searchQuery = e.target.value;
+      fundsPage = 0;
       renderFundsTable();
     });
+  }
+
+  // Add the AMFI category labels not already represented by the common filters.
+  const categoryPills = document.querySelector(".category-pills");
+  if (categoryPills) {
+    const existingCategories = new Set(Array.from(categoryPills.querySelectorAll(".pill-btn"), button => button.dataset.category));
+    const extraCategories = [...new Set(window.MUTUAL_FUNDS.map(fund => fund.category).filter(Boolean))]
+      .filter(category => !existingCategories.has(category)).sort((a, b) => a.localeCompare(b));
+    if (extraCategories.length) {
+      const select = document.createElement("select");
+      select.id = "extraCategoryFilter";
+      select.className = "category-more-select";
+      select.setAttribute("aria-label", "More fund categories");
+      select.innerHTML = `<option value="">More categories…</option>${extraCategories.map(category => `<option value="${category.replace(/"/g, "&quot;")}">${category}</option>`).join("")}`;
+      select.addEventListener("change", () => {
+        document.querySelectorAll(".pill-btn").forEach(button => button.classList.remove("active"));
+        if (!select.value) {
+          STATE.selectedCategory = "All";
+          categoryPills.querySelector('[data-category="All"]')?.classList.add("active");
+        } else STATE.selectedCategory = select.value;
+        fundsPage = 0;
+        renderFundsTable();
+      });
+      categoryPills.appendChild(select);
+    }
   }
 
   // Category filter pills
@@ -2044,6 +2131,9 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       STATE.selectedCategory = btn.dataset.category;
+      fundsPage = 0;
+      const extraCategory = document.getElementById("extraCategoryFilter");
+      if (extraCategory) extraCategory.value = "";
       renderFundsTable();
     });
   });
@@ -2339,10 +2429,10 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
               f.returns = { ...f.returns, ...cached.returns };
             }
           });
-          if (statusTextEl) statusTextEl.textContent = `AMFI Daily Updated (${parsed.latestNavDate || todayKey})`;
+          if (statusTextEl) statusTextEl.textContent = `Tracked AMFI NAV sync (${parsed.latestNavDate || todayKey})`;
           if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
           const freshness = document.getElementById("dataFreshnessStatus");
-          if (freshness) freshness.textContent = `AMFI NAV date: ${parsed.latestNavDate || "date unavailable"} (cached today)`;
+          if (freshness) freshness.textContent = `Tracked-scheme NAV date: ${parsed.latestNavDate || "date unavailable"} (cached today)`;
           renderFundsTable();
           renderComparisonStudio();
           runCalculator();
@@ -2354,7 +2444,7 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
     }
   }
 
-  if (statusTextEl) statusTextEl.textContent = "Syncing Live AMFI Daily NAVs...";
+  if (statusTextEl) statusTextEl.textContent = "Syncing tracked AMFI NAVs...";
   if (syncDotEl) syncDotEl.style.color = "var(--accent-amber)";
 
   const codeMap = window.AMFI_SCHEME_CODES || {};
@@ -2364,10 +2454,11 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
 
   // Process in batches of 8 for optimal network throughput & resilience
   const batchSize = 8;
-  const totalFunds = window.MUTUAL_FUNDS.length;
+  const syncCandidates = window.MUTUAL_FUNDS.filter(fund => !fund.dataStatus);
+  const totalFunds = syncCandidates.length;
 
   for (let i = 0; i < totalFunds; i += batchSize) {
-    const batch = window.MUTUAL_FUNDS.slice(i, i + batchSize);
+    const batch = syncCandidates.slice(i, i + batchSize);
     if (statusTextEl) {
       statusTextEl.textContent = `Syncing AMFI: ${Math.min(i + batchSize, totalFunds)}/${totalFunds}...`;
     }
@@ -2431,17 +2522,17 @@ window.syncAllAmfiFunds = async function(forceRefresh = false) {
     } catch (e) {
       // Ignore storage quota errors
     }
-    if (statusTextEl) statusTextEl.textContent = `✓ AMFI Live NAV (${latestSeenNavDate || todayKey})`;
+    if (statusTextEl) statusTextEl.textContent = `Tracked AMFI NAVs (${latestSeenNavDate || todayKey})`;
     if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
     const lastSyncEl = document.getElementById("amfiLastSyncText");
     if (lastSyncEl) lastSyncEl.textContent = `Latest NAVs: ${latestSeenNavDate || todayKey}`;
     const freshness = document.getElementById("dataFreshnessStatus");
-    if (freshness) freshness.textContent = `AMFI NAV date: ${latestSeenNavDate || "date unavailable"} • refreshed just now`;
+    if (freshness) freshness.textContent = `Tracked-scheme NAV date: ${latestSeenNavDate || "date unavailable"} • refreshed just now`;
   } else {
     if (statusTextEl) statusTextEl.textContent = `Daily Snapshot (${todayKey})`;
     if (syncDotEl) syncDotEl.style.color = "var(--accent-emerald)";
     const freshness = document.getElementById("dataFreshnessStatus");
-    if (freshness) freshness.textContent = "AMFI refresh unavailable; sample reference values may be shown.";
+    if (freshness) freshness.textContent = "Live NAV refresh unavailable; the date shown beside each scheme indicates its catalog update.";
   }
 
   renderFundsTable();
