@@ -114,18 +114,25 @@ window.AMFI_SCHEME_CODES = {
   "edelweiss-largemidcap": 119360,
   "jm-flexicap": 120492,
   "jm-midcap": 149591,
-  "jm-largecap": 120490
+  "jm-largecap": 120490,
+  "sbi-liquid": 119800,
+  "sbi-overnight": 119833,
+  "hdfc-corporate-bond": 118987,
+  "nippon-gilt": 118672,
+  "hdfc-nifty50-index": 119063,
+  "canara-robeco-largecap": 118269,
+  "franklin-flexicap": 118535
 };
 
 // ============================================================================
-// INDIAN MUTUAL FUND HOUSES (AMCS) REGISTRY — ALL 17 MAJOR FUND HOUSES
+// INDIAN MUTUAL FUND HOUSES (AMCS) REGISTRY
 // ============================================================================
 window.FUND_HOUSES = [
   {
     "id": "invesco",
     "name": "Invesco Mutual Fund",
     "shortName": "Invesco India",
-    "logoText": "\ud83c\udfdb\ufe0f",
+    "logoText": "🏛️",
     "badge": "Global Heritage",
     "aumTotalCr": 74200,
     "established": 2008,
@@ -145,7 +152,7 @@ window.FUND_HOUSES = [
     "id": "hdfc",
     "name": "HDFC Mutual Fund",
     "shortName": "HDFC AMC",
-    "logoText": "\ud83d\udd34",
+    "logoText": "🔴",
     "badge": "Market Leader",
     "aumTotalCr": 650000,
     "established": 1999,
@@ -158,14 +165,16 @@ window.FUND_HOUSES = [
       "hdfc-midcap",
       "hdfc-smallcap",
       "hdfc-top100",
-      "hdfc-balanced-adv"
+      "hdfc-balanced-adv",
+      "hdfc-corporate-bond",
+      "hdfc-nifty50-index"
     ]
   },
   {
     "id": "sbi",
     "name": "SBI Mutual Fund",
     "shortName": "SBI Funds",
-    "logoText": "\ud83d\udd35",
+    "logoText": "🔵",
     "badge": "India's Largest AMC",
     "aumTotalCr": 920000,
     "established": 1987,
@@ -178,14 +187,16 @@ window.FUND_HOUSES = [
       "sbi-elss",
       "sbi-bluechip",
       "sbi-magnum-midcap",
-      "sbi-contra"
+      "sbi-contra",
+      "sbi-liquid",
+      "sbi-overnight"
     ]
   },
   {
     "id": "icici",
     "name": "ICICI Prudential Mutual Fund",
     "shortName": "ICICI Pru",
-    "logoText": "\ud83d\udfe0",
+    "logoText": "🟠",
     "badge": "Value & Contrarian Pioneer",
     "aumTotalCr": 710000,
     "established": 1993,
@@ -205,7 +216,7 @@ window.FUND_HOUSES = [
     "id": "nippon",
     "name": "Nippon India Mutual Fund",
     "shortName": "Nippon India",
-    "logoText": "\ud83d\uddfe",
+    "logoText": "🗾",
     "badge": "Retail & ETF Powerhouse",
     "aumTotalCr": 490000,
     "established": 1995,
@@ -218,14 +229,15 @@ window.FUND_HOUSES = [
       "nippon-largecap",
       "nippon-growth",
       "nippon-multicap",
-      "nippon-power-infra"
+      "nippon-power-infra",
+      "nippon-gilt"
     ]
   },
   {
     "id": "kotak",
     "name": "Kotak Mahindra Mutual Fund",
     "shortName": "Kotak AMC",
-    "logoText": "\ud83d\udd3a",
+    "logoText": "🔺",
     "badge": "Consistent Compounder",
     "aumTotalCr": 380000,
     "established": 1998,
@@ -244,7 +256,7 @@ window.FUND_HOUSES = [
     "id": "axis",
     "name": "Axis Mutual Fund",
     "shortName": "Axis AMC",
-    "logoText": "\ud83d\udfe3",
+    "logoText": "🟣",
     "badge": "Quality & Growth Specialist",
     "aumTotalCr": 260000,
     "established": 2009,
@@ -264,7 +276,7 @@ window.FUND_HOUSES = [
     "id": "quant",
     "name": "Quant Mutual Fund",
     "shortName": "Quant AMC",
-    "logoText": "\u26a1",
+    "logoText": "⚡",
     "badge": "Algorithmic & Momentum Alpha",
     "aumTotalCr": 85000,
     "established": 2018,
@@ -284,7 +296,7 @@ window.FUND_HOUSES = [
     "id": "mirae",
     "name": "Mirae Asset Mutual Fund",
     "shortName": "Mirae Asset",
-    "logoText": "\ud83d\udd37",
+    "logoText": "🔷",
     "badge": "Consistent Long-Term Alpha",
     "aumTotalCr": 165000,
     "established": 2008,
@@ -303,7 +315,7 @@ window.FUND_HOUSES = [
     "id": "tata",
     "name": "Tata Mutual Fund",
     "shortName": "Tata AMC",
-    "logoText": "\ud83d\udca0",
+    "logoText": "💠",
     "badge": "Tata Trust & Governance",
     "aumTotalCr": 140000,
     "established": 1994,
@@ -322,7 +334,7 @@ window.FUND_HOUSES = [
     "id": "motilal",
     "name": "Motilal Oswal Mutual Fund",
     "shortName": "Motilal Oswal",
-    "logoText": "\ud83d\udd36",
+    "logoText": "🔶",
     "badge": "QGLP Philosophy",
     "aumTotalCr": 65000,
     "established": 2008,
@@ -341,7 +353,7 @@ window.FUND_HOUSES = [
     "id": "ppfas",
     "name": "PPFAS Mutual Fund",
     "shortName": "Parag Parikh",
-    "logoText": "\ud83d\udc22",
+    "logoText": "🐢",
     "badge": "Value Compounding Legend",
     "aumTotalCr": 78000,
     "established": 2013,
@@ -359,7 +371,7 @@ window.FUND_HOUSES = [
     "id": "uti",
     "name": "UTI Mutual Fund",
     "shortName": "UTI AMC",
-    "logoText": "\ud83c\udfdb\ufe0f",
+    "logoText": "🏛️",
     "badge": "Pioneer of Indian MFs",
     "aumTotalCr": 310000,
     "established": 1964,
@@ -377,7 +389,7 @@ window.FUND_HOUSES = [
     "id": "dsp",
     "name": "DSP Mutual Fund",
     "shortName": "DSP AMC",
-    "logoText": "\ud83c\udf32",
+    "logoText": "🌲",
     "badge": "Disciplined Active Manager",
     "aumTotalCr": 145000,
     "established": 1996,
@@ -395,7 +407,7 @@ window.FUND_HOUSES = [
     "id": "bandhan",
     "name": "Bandhan Mutual Fund",
     "shortName": "Bandhan AMC",
-    "logoText": "\ud83e\udd1d",
+    "logoText": "🤝",
     "badge": "Emerging Equity Powerhouse",
     "aumTotalCr": 135000,
     "established": 2000,
@@ -413,7 +425,7 @@ window.FUND_HOUSES = [
     "id": "edelweiss",
     "name": "Edelweiss Mutual Fund",
     "shortName": "Edelweiss AMC",
-    "logoText": "\ud83d\udc8e",
+    "logoText": "💎",
     "badge": "Agile & Mid-Cap Alpha",
     "aumTotalCr": 125000,
     "established": 2009,
@@ -431,7 +443,7 @@ window.FUND_HOUSES = [
     "id": "jm",
     "name": "JM Financial Mutual Fund",
     "shortName": "JM Financial",
-    "logoText": "\ud83e\ude99",
+    "logoText": "🪙",
     "badge": "Momentum & Growth Turnaround",
     "aumTotalCr": 9200,
     "established": 1994,
@@ -444,11 +456,43 @@ window.FUND_HOUSES = [
       "jm-midcap",
       "jm-largecap"
     ]
+  },
+  {
+    "id": "canara-robeco",
+    "name": "Canara Robeco Mutual Fund",
+    "shortName": "Canara Robeco",
+    "logoText": "CR",
+    "badge": "Scheme details from live catalog",
+    "aumTotalCr": null,
+    "established": null,
+    "hq": "—",
+    "cio": "—",
+    "searchQuery": "canara robeco",
+    "description": "Scheme NAV and available history are sourced from the public NAV catalog. Consult the fund house for current costs, holdings, and scheme documents.",
+    "schemeIds": [
+      "canara-robeco-largecap"
+    ]
+  },
+  {
+    "id": "franklin-templeton",
+    "name": "Franklin Templeton Mutual Fund",
+    "shortName": "Franklin Templeton",
+    "logoText": "FT",
+    "badge": "Scheme details from live catalog",
+    "aumTotalCr": null,
+    "established": null,
+    "hq": "—",
+    "cio": "—",
+    "searchQuery": "franklin templeton",
+    "description": "Scheme NAV and available history are sourced from the public NAV catalog. Consult the fund house for current costs, holdings, and scheme documents.",
+    "schemeIds": [
+      "franklin-flexicap"
+    ]
   }
 ];
 
 // ============================================================================
-// MUTUAL FUNDS DATASET — 69 SCHEMES WITH EXACT HOLDINGS & PERCENTAGES
+// MUTUAL FUNDS DATASET — 76 SCHEMES WITH AVAILABLE NAV HISTORY
 // ============================================================================
 window.MUTUAL_FUNDS = [
   {
@@ -8146,6 +8190,279 @@ window.MUTUAL_FUNDS = [
       "Technology": 14,
       "Others": 10
     }
+  },
+  {
+    "id": "sbi-liquid",
+    "houseId": "sbi",
+    "amfiCode": 119800,
+    "name": "SBI Liquid Fund",
+    "shortName": "SBI Liquid Fund",
+    "amc": "SBI Mutual Fund",
+    "category": "Liquid",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 4463.3947,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": 6.5,
+      "y3": 6.9,
+      "y5": 6.4,
+      "y10": 6.1,
+      "inception": 6.4
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "sbi-overnight",
+    "houseId": "sbi",
+    "amfiCode": 119833,
+    "name": "SBI Overnight Fund",
+    "shortName": "SBI Overnight Fund",
+    "amc": "SBI Mutual Fund",
+    "category": "Overnight",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 4499.6465,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": 5.2,
+      "y3": 6.0,
+      "y5": 5.7,
+      "y10": 5.3,
+      "inception": 5.7
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "hdfc-corporate-bond",
+    "houseId": "hdfc",
+    "amfiCode": 118987,
+    "name": "HDFC Corporate Bond Fund",
+    "shortName": "HDFC Corporate Bond Fund",
+    "amc": "HDFC Mutual Fund",
+    "category": "Corporate Bond",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 35.0726,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": 3.4,
+      "y3": 6.8,
+      "y5": 6.1,
+      "y10": 7.1,
+      "inception": 6.1
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "nippon-gilt",
+    "houseId": "nippon",
+    "amfiCode": 118672,
+    "name": "Nippon India Gilt Fund",
+    "shortName": "Nippon India Gilt Fund",
+    "amc": "Nippon India Mutual Fund",
+    "category": "Gilt",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 44.017,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": 1.7,
+      "y3": 6.3,
+      "y5": 5.5,
+      "y10": 7.2,
+      "inception": 5.5
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "hdfc-nifty50-index",
+    "houseId": "hdfc",
+    "amfiCode": 119063,
+    "name": "HDFC Nifty 50 Index Fund",
+    "shortName": "HDFC Nifty 50 Index Fund",
+    "amc": "HDFC Mutual Fund",
+    "category": "Index Fund",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 222.3578,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "NIFTY 50 TRI",
+    "returns": {
+      "y1": -9.2,
+      "y3": 5.7,
+      "y5": 5.5,
+      "y10": 11.2,
+      "inception": 5.5
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "canara-robeco-largecap",
+    "houseId": "canara-robeco",
+    "amfiCode": 118269,
+    "name": "Canara Robeco Large Cap Fund",
+    "shortName": "Canara Robeco Large Cap Fund",
+    "amc": "Canara Robeco Mutual Fund",
+    "category": "Large Cap",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 68.55,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": -6.8,
+      "y3": 8.9,
+      "y5": 7.6,
+      "y10": 13.3,
+      "inception": 7.6
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
+  },
+  {
+    "id": "franklin-flexicap",
+    "houseId": "franklin-templeton",
+    "amfiCode": 118535,
+    "name": "Franklin India Flexi Cap Fund",
+    "shortName": "Franklin India Flexi Cap Fund",
+    "amc": "Franklin Templeton Mutual Fund",
+    "category": "Flexi Cap",
+    "plan": "Direct - Growth",
+    "rating": null,
+    "risk": "See current scheme riskometer",
+    "nav": 1704.9487,
+    "navDate": "13-10-2026",
+    "aumCr": null,
+    "expenseRatio": null,
+    "regularExpenseRatio": null,
+    "exitLoad": "See current scheme documents",
+    "minSip": null,
+    "manager": "Not provided in current dataset",
+    "benchmark": "See current scheme documents",
+    "returns": {
+      "y1": -6.7,
+      "y3": 9.4,
+      "y5": 9.6,
+      "y10": 12.9,
+      "inception": 9.6
+    },
+    "benchmarkReturns": {
+      "y1": null,
+      "y3": null,
+      "y5": null,
+      "y10": null
+    },
+    "metrics": null,
+    "holdings": [],
+    "topHoldings": [],
+    "sectors": {},
+    "dataStatus": "NAV and trailing returns sync from MFAPI; other details require current scheme documents"
   }
 ];
 
@@ -8310,4 +8627,4 @@ window.STOCK_MARKET_NEWS = [
   }
 ];
 
-console.log("Returns.in Data Loaded: 17 Fund Houses, " + window.MUTUAL_FUNDS.length + " Schemes, Daily AMFI mfapi.in Sync Enabled.");
+console.log("Returns.in Data Loaded: " + window.FUND_HOUSES.length + " Fund Houses, " + window.MUTUAL_FUNDS.length + " Schemes, Daily AMFI mfapi.in Sync Enabled.");
