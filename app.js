@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 // Returns — Indian Mutual Fund Analytics & Return Comparison Engine
 
 const STATE = {
