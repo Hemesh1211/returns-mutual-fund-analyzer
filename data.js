@@ -8216,7 +8216,7 @@ window.MUTUAL_FUNDS = [
       "y3": 6.9,
       "y5": 6.4,
       "y10": 6.1,
-      "inception": 6.4
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8255,7 +8255,7 @@ window.MUTUAL_FUNDS = [
       "y3": 6.0,
       "y5": 5.7,
       "y10": 5.3,
-      "inception": 5.7
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8294,7 +8294,7 @@ window.MUTUAL_FUNDS = [
       "y3": 6.8,
       "y5": 6.1,
       "y10": 7.1,
-      "inception": 6.1
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8333,7 +8333,7 @@ window.MUTUAL_FUNDS = [
       "y3": 6.3,
       "y5": 5.5,
       "y10": 7.2,
-      "inception": 5.5
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8372,7 +8372,7 @@ window.MUTUAL_FUNDS = [
       "y3": 5.7,
       "y5": 5.5,
       "y10": 11.2,
-      "inception": 5.5
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8411,7 +8411,7 @@ window.MUTUAL_FUNDS = [
       "y3": 8.9,
       "y5": 7.6,
       "y10": 13.3,
-      "inception": 7.6
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
@@ -8450,7 +8450,7 @@ window.MUTUAL_FUNDS = [
       "y3": 9.4,
       "y5": 9.6,
       "y10": 12.9,
-      "inception": 9.6
+      "inception": null
     },
     "benchmarkReturns": {
       "y1": null,
