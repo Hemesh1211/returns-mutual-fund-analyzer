@@ -1,3 +1,4 @@
+Warning: fs was declared with const; use let for reassignable variables.
 :root {
   --bg-primary: #171614;
   --bg-secondary: #1d1b17;
@@ -3926,6 +3927,41 @@ body { background: var(--bg-primary) !important; background-image: none !importa
   .solar-orbit { transform: translate(-50%,-50%) rotateX(67deg); }
 }
 
-/* Keep interactions still: hover feedback may change color, but never lifts or tilts. */
-:hover { transform: none !important; }
-.hero-visual { transform: none !important; transition: none !important; }
+/* Full-catalog navigation */
+.category-more-select {
+  min-height: 34px;
+  max-width: 210px;
+  padding: 6px 30px 6px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.funds-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+.funds-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.funds-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.funds-page-count {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .funds-pagination { align-items: flex-start; flex-direction: column; }
+}
