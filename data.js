@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 // Returns — Indian Mutual Fund catalog. Direct Growth listings and NAVs are sourced from AMFI.
 // Missing fields remain unavailable until verified; do not treat blank data as zero.
 // Historical NAV sync is available through the AMFI/MFAPI integration.
