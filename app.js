@@ -34,6 +34,15 @@ let navHistoryDb = null;
 let navHistoryDbReady = null;
 let activeNavHistoryRows = [];
 
+function displayMetric(value, digits = 1, suffix = "") {
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) ? `${Number(value).toFixed(digits)}${suffix}` : "—";
+}
+function displayMoney(value, digits = 0) {
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits }) : "—";
+}
+function safeRating(value) { return Math.max(0, Math.min(5, Number(value) || 0)); }
+
+
 function openNavHistoryDatabase() {
   return new Promise((resolve, reject) => {
     if (!window.indexedDB) return reject(new Error("IndexedDB is not available in this browser."));
@@ -304,7 +313,7 @@ function getFilteredFunds() {
       (STATE.selectedCategory === "Invesco" ? f.amc.toLowerCase().includes("invesco") : f.category === STATE.selectedCategory);
     const matchesQuery = !q ||
       f.name.toLowerCase().includes(q) ||
-      f.amc.toLowerCase().includes(q) ||
+      (f.amc || "").toLowerCase().includes(q) ||
       f.manager.toLowerCase().includes(q) ||
       f.topHoldings.some(h => h.toLowerCase().includes(q));
     return matchesCat && matchesQuery;
@@ -342,11 +351,11 @@ function renderFundsTable() {
 
   tbody.innerHTML = funds.map(fund => {
     const isCompared = STATE.compareIds.includes(fund.id);
-    const cagr = fund.returns[STATE.horizon];
-    const bmarkCagr = fund.benchmarkReturns[STATE.horizon];
-    const outperf = (cagr - bmarkCagr).toFixed(1);
-    const lumpsum1LVal = 100000 * Math.pow(1 + cagr / 100, yrs);
-    const starsStr = "★".repeat(fund.rating) + "☆".repeat(5 - fund.rating);
+    const cagr = fund.returns?.[STATE.horizon];
+    const bmarkCagr = fund.benchmarkReturns?.[STATE.horizon];
+    const outperf = Number.isFinite(cagr) && Number.isFinite(bmarkCagr) ? (cagr - bmarkCagr).toFixed(1) : null;
+    const lumpsum1LVal = Number.isFinite(cagr) ? 100000 * Math.pow(1 + cagr / 100, yrs) : null;
+    const starsStr = "★".repeat(safeRating(fund.rating)) + "☆".repeat(5 - safeRating(fund.rating));
 
     return `
       <tr class="${isCompared ? 'selected-row' : ''}" onclick="handleFundRowClick(event, '${fund.id}')" title="Click to view full scheme deep-dive analysis & holdings">
@@ -358,40 +367,40 @@ function renderFundsTable() {
             </span>
             <div class="fund-meta-row">
               <span class="badge-cat">${fund.category}</span>
-              <span class="stars" title="${fund.rating} Star Rated">${starsStr}</span>
-              <span class="mono-num">NAV: ₹${Number(fund.nav).toFixed(2)}</span>
+              <span class="stars" title="${fund.rating ?? "Not rated"} Star Rated">${starsStr}</span>
+              <span class="mono-num">NAV: ₹${displayMetric(fund.nav, 2)}</span>
               ${fund.dayChange !== undefined ? `<span style="color:${fund.dayChange >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}; font-weight:700; font-family:var(--font-mono);">(${fund.dayChange >= 0 ? '+' : ''}${Number(fund.dayChange).toFixed(2)}%)</span>` : ''}
               ${fund.navDate ? `<span style="color:var(--text-muted); font-size:0.7rem;">[${fund.navDate}]</span>` : ''}
             </div>
             <div style="font-size: 0.73rem; color: var(--text-muted);">
-              Top Stocks: ${fund.holdings ? fund.holdings.slice(0, 3).map(h => `${h.name} (${h.percent.toFixed(1)}%)`).join(", ") : fund.topHoldings.slice(0, 3).join(", ")}
+              Top Stocks: ${fund.holdings?.length ? fund.holdings.slice(0, 3).map(h => `${h.name} (${h.percent.toFixed(1)}%)`).join(", ") : ((fund.topHoldings || []).slice(0, 3).join(", ") || "Holdings not available")}
             </div>
           </div>
         </td>
-        <td class="mono-num ${STATE.horizon === 'y1' ? 'return-highlight' : ''}">${fund.returns.y1.toFixed(1)}%</td>
-        <td class="mono-num ${STATE.horizon === 'y3' ? 'return-highlight' : ''}">${fund.returns.y3.toFixed(1)}%</td>
+        <td class="mono-num ${STATE.horizon === 'y1' ? 'return-highlight' : ''}">${displayMetric(fund.returns.y1, 1, "%")}</td>
+        <td class="mono-num ${STATE.horizon === 'y3' ? 'return-highlight' : ''}">${displayMetric(fund.returns.y3, 1, "%")}</td>
         <td class="mono-num ${STATE.horizon === 'y5' ? 'return-highlight' : ''}">
-          ${fund.returns.y5.toFixed(1)}%
+          ${displayMetric(fund.returns.y5, 1, "%")}
           <div>
-            <span class="alpha-pill ${outperf >= 0 ? '' : 'negative'}">
-              ${outperf >= 0 ? '+' : ''}${outperf}% vs Index
+            <span class="alpha-pill ${outperf !== null && outperf < 0 ? 'negative' : ''}">
+              ${outperf === null ? "Benchmark comparison unavailable" : `${outperf >= 0 ? "+" : ""}${outperf}% vs Index`}
             </span>
           </div>
         </td>
-        <td class="mono-num ${STATE.horizon === 'y10' ? 'return-highlight' : ''}">${fund.returns.y10.toFixed(1)}%</td>
+        <td class="mono-num ${STATE.horizon === 'y10' ? 'return-highlight' : ''}">${displayMetric(fund.returns.y10, 1, "%")}</td>
         <td>
-          <div class="mono-num" style="color: var(--accent-emerald);">${formatIndianCompact(lumpsum1LVal)}</div>
+          <div class="mono-num" style="color: var(--accent-emerald);">${lumpsum1LVal === null ? "—" : formatIndianCompact(lumpsum1LVal)}</div>
           <div style="font-size: 0.72rem; color: var(--text-muted);">on ₹1,00,000 in ${yrs}Y</div>
         </td>
         <td class="mono-num">
-          +${fund.metrics.alpha.toFixed(2)}
-          <div style="font-size: 0.72rem; color: var(--text-muted);">Sharpe: ${fund.metrics.sharpe}</div>
+          ${displayMetric(fund.metrics?.alpha, 2)}
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Sharpe: ${displayMetric(fund.metrics?.sharpe, 2)}</div>
         </td>
         <td class="mono-num">
-          ${fund.expenseRatio}%
-          <div style="font-size: 0.72rem; color: var(--text-muted);">Reg: ${fund.regularExpenseRatio}%</div>
+          ${displayMetric(fund.expenseRatio, 2, "%")}
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Reg: ${displayMetric(fund.regularExpenseRatio, 2, "%")}</div>
         </td>
-        <td class="mono-num">₹${fund.aumCr.toLocaleString("en-IN")} Cr</td>
+        <td class="mono-num">₹${displayMoney(fund.aumCr)} Cr</td>
         <td>
           <button class="compare-toggle-btn ${isCompared ? 'added' : ''}" onclick="toggleCompare('${fund.id}')">
             ${isCompared ? '✓ Comparing' : '+ Compare'}
@@ -412,10 +421,10 @@ function renderFundsCards(funds, yrs) {
 
   container.innerHTML = funds.map(fund => {
     const isCompared = STATE.compareIds.includes(fund.id);
-    const cagr = fund.returns[STATE.horizon];
-    const bmarkCagr = fund.benchmarkReturns[STATE.horizon];
-    const outperf = (cagr - bmarkCagr).toFixed(1);
-    const starsStr = "★".repeat(fund.rating) + "☆".repeat(5 - fund.rating);
+    const cagr = fund.returns?.[STATE.horizon];
+    const bmarkCagr = fund.benchmarkReturns?.[STATE.horizon];
+    const outperf = Number.isFinite(cagr) && Number.isFinite(bmarkCagr) ? (cagr - bmarkCagr).toFixed(1) : null;
+    const starsStr = "★".repeat(safeRating(fund.rating)) + "☆".repeat(5 - safeRating(fund.rating));
 
     return `
       <div class="fund-mobile-card ${isCompared ? 'selected-card' : ''}" onclick="handleFundRowClick(event, '${fund.id}')" style="cursor: pointer;" title="Tap to view full fund details">
@@ -430,7 +439,7 @@ function renderFundsCards(funds, yrs) {
             <div style="text-align:right;">
               <span class="stars">${starsStr}</span>
               <div class="mono-num" style="font-size:0.88rem; font-weight:700; margin-top:2px;">
-                ₹${Number(fund.nav).toFixed(2)}
+                ₹${displayMetric(fund.nav, 2)}
               </div>
               ${fund.dayChange !== undefined ? `<div style="font-size:0.72rem; color:${fund.dayChange >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}; font-weight:700;">${fund.dayChange >= 0 ? '+' : ''}${Number(fund.dayChange).toFixed(2)}%</div>` : ''}
             </div>
@@ -445,30 +454,30 @@ function renderFundsCards(funds, yrs) {
         <div class="mobile-return-strip">
           <div class="mobile-return-col ${STATE.horizon === 'y1' ? 'highlight-horizon' : ''}">
             <span class="mobile-return-lbl">1Y</span>
-            <span class="mobile-return-val">${fund.returns.y1.toFixed(1)}%</span>
+            <span class="mobile-return-val">${displayMetric(fund.returns.y1, 1, "%")}</span>
           </div>
           <div class="mobile-return-col ${STATE.horizon === 'y3' ? 'highlight-horizon' : ''}">
             <span class="mobile-return-lbl">3Y</span>
-            <span class="mobile-return-val">${fund.returns.y3.toFixed(1)}%</span>
+            <span class="mobile-return-val">${displayMetric(fund.returns.y3, 1, "%")}</span>
           </div>
           <div class="mobile-return-col ${STATE.horizon === 'y5' ? 'highlight-horizon' : ''}">
             <span class="mobile-return-lbl">5Y</span>
-            <span class="mobile-return-val">${fund.returns.y5.toFixed(1)}%</span>
+            <span class="mobile-return-val">${displayMetric(fund.returns.y5, 1, "%")}</span>
           </div>
           <div class="mobile-return-col ${STATE.horizon === 'y10' ? 'highlight-horizon' : ''}">
             <span class="mobile-return-lbl">10Y</span>
-            <span class="mobile-return-val">${fund.returns.y10.toFixed(1)}%</span>
+            <span class="mobile-return-val">${displayMetric(fund.returns.y10, 1, "%")}</span>
           </div>
         </div>
 
         <div class="mobile-extra-metrics">
-          <div>Alpha: <strong style="color:var(--accent-emerald);">+${fund.metrics.alpha.toFixed(1)}%</strong></div>
-          <div>Expense: <strong>${fund.expenseRatio}%</strong></div>
-          <div>AUM: <strong>₹${fund.aumCr.toLocaleString("en-IN")} Cr</strong></div>
+          <div>Alpha: <strong style="color:var(--accent-emerald);">+${displayMetric(fund.metrics?.alpha, 1, "%")}</strong></div>
+          <div>Expense: <strong>${displayMetric(fund.expenseRatio, 2, "%")}</strong></div>
+          <div>AUM: <strong>₹${displayMoney(fund.aumCr)} Cr</strong></div>
         </div>
 
         <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:2px;">
-          <span>Top Holdings: <span style="color:var(--text-secondary);">${fund.holdings ? fund.holdings.slice(0, 3).map(h => `${h.name.split(' ')[0]} (${h.percent.toFixed(1)}%)`).join(", ") : fund.topHoldings.slice(0, 3).join(", ")}</span></span>
+          <span>Top Holdings: <span style="color:var(--text-secondary);">${fund.holdings?.length ? fund.holdings.slice(0, 3).map(h => `${h.name.split(' ')[0]} (${h.percent.toFixed(1)}%)`).join(", ") : (fund.topHoldings || []).slice(0, 3).join(", ") || "Holdings not available"}</span></span>
           <button class="btn btn-sm" style="font-size:0.72rem; padding:3px 8px; font-weight:700;" id="btn-mcard-holdings-${fund.id}" onclick="toggleMobileCardHoldings('${fund.id}')" title="Click to show full holdings">
             📊 Holdings ▾
           </button>
@@ -599,12 +608,18 @@ function drawComparisonChart(comparedFunds) {
 
   const seriesList = comparedFunds.map((f, i) => ({
     name: f.shortName,
-    cagr: f.returns[cagrKey],
+    cagr: f.returns?.[cagrKey],
     color: CHART_COLORS[i % CHART_COLORS.length],
-    points: computeWealthSeries(f.returns[cagrKey], years, STATE.chartMode)
-  }));
+    points: computeWealthSeries(f.returns?.[cagrKey], years, STATE.chartMode)
+  })).filter(series => Number.isFinite(series.cagr));
 
 
+  if (!seriesList.length || seriesList.every(series => !Number.isFinite(series.cagr))) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px sans-serif";
+    ctx.fillText("Return history unavailable for selected scheme(s).", 18, 28);
+    return;
+  }
   const maxVal = Math.max(...seriesList.flatMap(s => s.points)) * 1.08;
   const padLeft = 72;
   const padRight = 24;
@@ -693,7 +708,7 @@ function renderCompareSelectorSlots() {
     quickSelect.innerHTML = `
       <option value="">＋ Add / Select Mutual Fund to Compare (${availableFunds.length} available)...</option>
       ${availableFunds.map(f => `
-        <option value="${f.id}">${f.name} — ${f.category} (5Y: ${f.returns.y5}%)</option>
+        <option value="${f.id}">${f.name} — ${f.category} (5Y: ${displayMetric(f.returns?.y5, 1, "%")})</option>
       `).join("")}
     `;
   }
@@ -721,16 +736,16 @@ function renderCompareSelectorSlots() {
             <select class="select-input" style="padding: 7px 10px; font-size: 0.83rem; font-weight: 600;" onchange="changeSlotFund(${i}, this.value)">
               ${window.MUTUAL_FUNDS.map(opt => `
                 <option value="${opt.id}" ${opt.id === fund.id ? "selected" : ""} ${STATE.compareIds.includes(opt.id) && opt.id !== fund.id ? "disabled" : ""}>
-                  ${opt.name} (${opt.returns.y5}% 5Y)
+                  ${opt.name} (${displayMetric(opt.returns?.y5, 1, "%")} 5Y)
                 </option>
               `).join("")}
             </select>
           </div>
 
           <div class="slot-metrics-strip" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <span>3Y: <strong class="mono-num" style="color:var(--text-primary);">${fund.returns.y3}%</strong></span>
-            <span>5Y: <strong class="mono-num" style="color:var(--accent-emerald);">${fund.returns.y5}%</strong></span>
-            <span>Exp: <strong class="mono-num">${fund.expenseRatio}%</strong></span>
+            <span>3Y: <strong class="mono-num" style="color:var(--text-primary);">${displayMetric(fund.returns?.y3, 1, "%")}</strong></span>
+            <span>5Y: <strong class="mono-num" style="color:var(--accent-emerald);">${displayMetric(fund.returns?.y5, 1, "%")}</strong></span>
+            <span>Exp: <strong class="mono-num">${displayMetric(fund.expenseRatio, 2, "%")}</strong></span>
             <button class="btn btn-sm" onclick="openFundModal('${fund.id}')" style="font-size:0.72rem; padding:3px 8px; font-weight:700;" title="Deep dive analysis modal">🔍 Details ↗</button>
           </div>
         </div>
@@ -749,7 +764,7 @@ function renderCompareSelectorSlots() {
             <select class="select-input" style="padding: 8px 10px; font-size: 0.83rem;" onchange="changeSlotFund(${i}, this.value)">
               <option value="">Choose a Mutual Fund...</option>
               ${available.map(opt => `
-                <option value="${opt.id}">${opt.name} [${opt.category} • ${opt.returns.y5}%]</option>
+                <option value="${opt.id}">${opt.name} [${opt.category} • ${displayMetric(opt.returns?.y5, 1, "%")}]</option>
               `).join("")}
             </select>
           </div>
@@ -866,7 +881,7 @@ window.submitCustomFund = function(event) {
   const calcFundSelect = document.getElementById("calcFundSelect");
   if (calcFundSelect) {
     calcFundSelect.innerHTML = window.MUTUAL_FUNDS.map(f =>
-      `<option value="${f.id}">${f.name} (${f.returns.y5}% 5Y CAGR)</option>`
+      `<option value="${f.id}">${f.name} (${displayMetric(f.returns?.y5, 1, "%")} 5Y CAGR)</option>`
     ).join("");
   }
 
@@ -899,8 +914,12 @@ function renderOverlapAnalysis(funds) {
 
   // Count how many compared funds hold each stock
   const stockMap = {};
+  if (funds.some(f => !(f.topHoldings || []).length)) {
+    container.innerHTML = `<p style="color: var(--text-secondary);">Portfolio holdings are not available for every selected scheme, so overlap cannot be calculated.</p>`;
+    return;
+  }
   funds.forEach(f => {
-    f.topHoldings.forEach(stock => {
+    (f.topHoldings || []).forEach(stock => {
       if (!stockMap[stock]) stockMap[stock] = [];
       stockMap[stock].push(f.shortName);
     });
@@ -910,8 +929,8 @@ function renderOverlapAnalysis(funds) {
   const pairOverlaps = [];
   for (let i = 0; i < funds.length; i++) {
     for (let j = i + 1; j < funds.length; j++) {
-      const setA = new Set(funds[i].topHoldings);
-      const common = funds[j].topHoldings.filter(s => setA.has(s));
+      const setA = new Set(funds[i].topHoldings || []);
+      const common = (funds[j].topHoldings || []).filter(s => setA.has(s));
       const pct = Math.round((common.length / 8) * 100);
       pairOverlaps.push({
         pair: `${funds[i].shortName} vs ${funds[j].shortName}`,
@@ -955,16 +974,16 @@ function renderComparisonMatrix(funds) {
   if (!table) return;
 
   const bestVal = (getter, mode = "max") => {
-    const vals = funds.map(getter);
-    return mode === "max" ? Math.max(...vals) : Math.min(...vals);
+    const vals = funds.map(getter).filter(Number.isFinite);
+    return vals.length ? (mode === "max" ? Math.max(...vals) : Math.min(...vals)) : null;
   };
 
   const max1Y = bestVal(f => f.returns.y1, "max");
   const max3Y = bestVal(f => f.returns.y3, "max");
   const max5Y = bestVal(f => f.returns.y5, "max");
   const max10Y = bestVal(f => f.returns.y10, "max");
-  const maxAlpha = bestVal(f => f.metrics.alpha, "max");
-  const maxSharpe = bestVal(f => f.metrics.sharpe, "max");
+  const maxAlpha = bestVal(f => f.metrics?.alpha, "max");
+  const maxSharpe = bestVal(f => f.metrics?.sharpe, "max");
   const minExpense = bestVal(f => f.expenseRatio, "min");
 
   table.innerHTML = `
@@ -988,66 +1007,66 @@ function renderComparisonMatrix(funds) {
       <tr class="matrix-section-row"><td colspan="${funds.length + 1}">Annualized Trailing Returns (CAGR %)</td></tr>
       <tr>
         <td>1 Year Return</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.returns.y1 === max1Y ? 'best-in-row' : ''}">${f.returns.y1.toFixed(1)}%</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${Number.isFinite(f.returns?.y1) && f.returns.y1 === max1Y ? 'best-in-row' : ''}">${displayMetric(f.returns?.y1, 1, "%")}</span></td>`).join("")}
       </tr>
       <tr>
         <td>3 Year Return (CAGR)</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.returns.y3 === max3Y ? 'best-in-row' : ''}">${f.returns.y3.toFixed(1)}%</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${Number.isFinite(f.returns?.y3) && f.returns.y3 === max3Y ? 'best-in-row' : ''}">${displayMetric(f.returns?.y3, 1, "%")}</span></td>`).join("")}
       </tr>
       <tr>
         <td>5 Year Return (CAGR)</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.returns.y5 === max5Y ? 'best-in-row' : ''}">${f.returns.y5.toFixed(1)}%</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${Number.isFinite(f.returns?.y5) && f.returns.y5 === max5Y ? 'best-in-row' : ''}">${displayMetric(f.returns?.y5, 1, "%")}</span></td>`).join("")}
       </tr>
       <tr>
         <td>10 Year Return (CAGR)</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.returns.y10 === max10Y ? 'best-in-row' : ''}">${f.returns.y10.toFixed(1)}%</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${Number.isFinite(f.returns?.y10) && f.returns.y10 === max10Y ? 'best-in-row' : ''}">${displayMetric(f.returns?.y10, 1, "%")}</span></td>`).join("")}
       </tr>
       <tr>
         <td>₹10,000/mo SIP for 10 Years</td>
         ${funds.map(f => {
-          const pts = computeWealthSeries(f.returns.y10, 10, "sip");
-          return `<td class="mono-num" style="color: var(--accent-emerald);">${formatIndianCompact(pts[pts.length - 1])}</td>`;
+          const pts = Number.isFinite(f.returns?.y10) ? computeWealthSeries(f.returns.y10, 10, "sip") : null;
+          return `<td class="mono-num" style="color: var(--accent-emerald);">${pts ? formatIndianCompact(pts[pts.length - 1]) : "—"}</td>`;
         }).join("")}
       </tr>
 
       <tr class="matrix-section-row"><td colspan="${funds.length + 1}">Risk & Benchmark Alpha Metrics</td></tr>
       <tr>
         <td>Jensen's Alpha (Outperformance)</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.metrics.alpha === maxAlpha ? 'best-in-row' : ''}">+${f.metrics.alpha.toFixed(2)}%</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${f.metrics?.alpha === maxAlpha ? 'best-in-row' : ''}">${displayMetric(f.metrics?.alpha, 2, "%")}</span></td>`).join("")}
       </tr>
       <tr>
         <td>Sharpe Ratio (Risk-Adjusted)</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.metrics.sharpe === maxSharpe ? 'best-in-row' : ''}">${f.metrics.sharpe.toFixed(2)}</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${f.metrics?.sharpe === maxSharpe ? 'best-in-row' : ''}">${displayMetric(f.metrics?.sharpe, 2)}</span></td>`).join("")}
       </tr>
       <tr>
         <td>Volatility (Std Deviation)</td>
-        ${funds.map(f => `<td class="mono-num">${f.metrics.stdDev}% <span style="font-size:0.74rem; color:var(--text-muted);">(Beta: ${f.metrics.beta})</span></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num">${displayMetric(f.metrics?.stdDev, 2, "%")} <span style="font-size:0.74rem; color:var(--text-muted);">(Beta: ${displayMetric(f.metrics?.beta, 2)})</span></td>`).join("")}
       </tr>
       <tr>
         <td>Primary Benchmark</td>
-        ${funds.map(f => `<td style="font-size: 0.84rem;">${f.benchmark}</td>`).join("")}
+        ${funds.map(f => `<td style="font-size: 0.84rem;">${f.benchmark || "See scheme documents"}</td>`).join("")}
       </tr>
 
       <tr class="matrix-section-row"><td colspan="${funds.length + 1}">Cost, Fund Size & Portfolio Details</td></tr>
       <tr>
         <td>Direct Expense Ratio</td>
-        ${funds.map(f => `<td class="mono-num"><span class="${f.expenseRatio === minExpense ? 'best-in-row' : ''}">${f.expenseRatio}%</span> <small style="color:var(--text-muted);">(Reg: ${f.regularExpenseRatio}%)</small></td>`).join("")}
+        ${funds.map(f => `<td class="mono-num"><span class="${f.expenseRatio === minExpense ? 'best-in-row' : ''}">${displayMetric(f.expenseRatio, 2, "%")}</span> <small style="color:var(--text-muted);">(Reg: ${displayMetric(f.regularExpenseRatio, 2, "%")})</small></td>`).join("")}
       </tr>
       <tr>
         <td>AUM (Fund Size)</td>
-        ${funds.map(f => `<td class="mono-num">₹${f.aumCr.toLocaleString("en-IN")} Cr</td>`).join("")}
+        ${funds.map(f => `<td class="mono-num">₹${displayMoney(f.aumCr)} Cr</td>`).join("")}
       </tr>
       <tr>
         <td>Fund Manager</td>
-        ${funds.map(f => `<td style="font-size: 0.85rem;">${f.manager}</td>`).join("")}
+        ${funds.map(f => `<td style="font-size: 0.85rem;">${f.manager || "Not provided"}</td>`).join("")}
       </tr>
       <tr>
         <td>Exit Load</td>
-        ${funds.map(f => `<td style="font-size: 0.82rem; color: var(--text-secondary);">${f.exitLoad}</td>`).join("")}
+        ${funds.map(f => `<td style="font-size: 0.82rem; color: var(--text-secondary);">${f.exitLoad || "See scheme documents"}</td>`).join("")}
       </tr>
       <tr>
         <td>Top 5 Equity Holdings</td>
-        ${funds.map(f => `<td style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45;">${f.topHoldings.slice(0, 5).join(" • ")}</td>`).join("")}
+        ${funds.map(f => `<td style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45;">${(f.topHoldings || []).slice(0, 5).join(" • ") || "Not available"}</td>`).join("")}
       </tr>
     </tbody>
   `;
@@ -1056,8 +1075,13 @@ function renderComparisonMatrix(funds) {
 // SIP, Step-Up SIP & Indian LTCG Tax Calculator
 function runCalculator() {
   const fund = window.MUTUAL_FUNDS.find(f => f.id === STATE.calc.fundId) || window.MUTUAL_FUNDS[0];
-  const cagr = STATE.calc.customCagr !== null ? STATE.calc.customCagr : fund.returns.y5;
-  const regCagr = cagr - (fund.regularExpenseRatio - fund.expenseRatio);
+  const cagr = STATE.calc.customCagr !== null ? STATE.calc.customCagr : fund.returns?.y5;
+  if (!Number.isFinite(cagr)) {
+    const badge = document.getElementById("calcFundCagrBadge");
+    if (badge) badge.textContent = `Historical return unavailable (${fund.shortName})`;
+    return;
+  }
+  const regCagr = cagr - (Number(fund.regularExpenseRatio || fund.expenseRatio || 0) - Number(fund.expenseRatio || 0));
   const years = STATE.calc.years;
 
   let totalInvested = 0;
@@ -1110,10 +1134,17 @@ window.openFundModal = function(fundId) {
   const content = document.getElementById("fundModalContent");
   if (!modal || !content) return;
 
+  if (fund.dataStatus) {
+    const returns = ["y1", "y3", "y5", "y10"].map((key, i) => `<div class="modal-cagr-card"><div class="cagr-lbl">${["1 Year", "3 Year", "5 Year", "10 Year"][i]}</div><div class="cagr-val">${displayMetric(fund.returns?.[key], 1, "%")}</div></div>`).join("");
+    content.innerHTML = `<div class="modal-header-row"><div><span class="badge-cat">${fund.category} • ${fund.plan}</span><h2 class="modal-scheme-title">${fund.name}</h2><div class="modal-scheme-sub">${fund.amc} • AMFI scheme ${fund.amfiCode}</div></div><button class="btn" onclick="closeFundModal()">✕</button></div><section class="modal-hero-nav-card"><div><div>Latest NAV</div><strong>₹${displayMetric(fund.nav, 4)}</strong><div>${fund.navDate || "Syncing NAV"}</div></div><div><div>Risk</div><strong>Check the scheme’s current riskometer</strong></div></section><h3>Trailing returns</h3><div class="modal-cagr-grid">${returns}</div><p class="home-data-note">Returns are calculated from the available NAV history and refreshed from MFAPI when available. Expense ratios, AUM, holdings, manager, and benchmark-relative risk metrics are not included in this site’s current dataset. Refer to the fund house’s latest scheme documents.</p><button class="compare-toggle-btn ${STATE.compareIds.includes(fund.id) ? "added" : ""}" onclick="toggleCompare('${fund.id}')">${STATE.compareIds.includes(fund.id) ? "✓ Comparing" : "+ Compare"}</button>`;
+    modal.classList.add("active");
+    return;
+  }
+
   const isCompared = STATE.compareIds.includes(fund.id);
   const holdings = fund.holdings || [];
   const sectorEntries = Object.entries(fund.sectors || {}).sort((a, b) => b[1] - a[1]);
-  const starsStr = "★".repeat(fund.rating) + "☆".repeat(5 - fund.rating);
+  const starsStr = "★".repeat(safeRating(fund.rating)) + "☆".repeat(5 - safeRating(fund.rating));
   const amfiCode = fund.amfiCode || (window.AMFI_SCHEME_CODES ? window.AMFI_SCHEME_CODES[fund.id] : null) || "122639";
 
   // Compounding Calculations: ₹10k/month 10Y SIP
@@ -1135,18 +1166,18 @@ window.openFundModal = function(fundId) {
   const lumpGain = lumpCorpus - lumpAmount;
 
   // Direct Plan commission savings estimate over 15Y (on ₹15k/mo SIP)
-  const expSavingsPct = (fund.regularExpenseRatio - fund.expenseRatio).toFixed(2);
+  const expSavingsPct = Number.isFinite(fund.regularExpenseRatio) && Number.isFinite(fund.expenseRatio) ? (fund.regularExpenseRatio - fund.expenseRatio).toFixed(2) : "—";
   const directWealthSaved = Math.round(15000 * 12 * 15 * 0.72);
 
-  const dayChangeVal = fund.dayChange !== undefined ? fund.dayChange : 0.65;
-  const dayChangeSign = dayChangeVal >= 0 ? "+" : "";
+  const dayChangeVal = fund.dayChange !== undefined ? fund.dayChange : null;
+  const dayChangeSign = dayChangeVal !== null && dayChangeVal >= 0 ? "+" : "";
 
   // Multi-horizon CAGRs vs Benchmark
   const horizons = [
-    { key: "y1", label: "1 Year Return", fundRet: fund.returns.y1, bmarkRet: fund.benchmarkReturns.y1 },
-    { key: "y3", label: "3 Year CAGR", fundRet: fund.returns.y3, bmarkRet: fund.benchmarkReturns.y3 },
-    { key: "y5", label: "5 Year CAGR", fundRet: fund.returns.y5, bmarkRet: fund.benchmarkReturns.y5 },
-    { key: "y10", label: "10 Year CAGR", fundRet: fund.returns.y10, bmarkRet: fund.benchmarkReturns.y10 }
+    { key: "y1", label: "1 Year Return", fundRet: fund.returns.y1, bmarkRet: fund.benchmarkReturns?.y1 },
+    { key: "y3", label: "3 Year CAGR", fundRet: fund.returns.y3, bmarkRet: fund.benchmarkReturns?.y3 },
+    { key: "y5", label: "5 Year CAGR", fundRet: fund.returns.y5, bmarkRet: fund.benchmarkReturns?.y5 },
+    { key: "y10", label: "10 Year CAGR", fundRet: fund.returns.y10, bmarkRet: fund.benchmarkReturns?.y10 }
   ];
 
   content.innerHTML = `
@@ -1160,7 +1191,7 @@ window.openFundModal = function(fundId) {
           <span class="badge-cat">${fund.category} • ${fund.plan}</span>
           <span class="stars" style="color:var(--accent-amber); font-size:1rem;" title="${fund.rating} Star Rating">${starsStr}</span>
           <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:999px; background:rgba(244,63,94,0.12); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.25);">
-            ⚠️ ${fund.risk} Risk
+            ⚠️ ${fund.risk || "Riskometer unavailable"} Risk
           </span>
           <span style="font-family:var(--font-mono); font-size:0.75rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:var(--text-secondary); cursor:pointer; border:1px solid var(--border-color);" onclick="navigator.clipboard.writeText('${amfiCode}'); window.showToast('Copied AMFI #${amfiCode} to clipboard!');" title="Click to copy AMFI scheme code">
             AMFI #${amfiCode} 📋
@@ -1168,7 +1199,7 @@ window.openFundModal = function(fundId) {
         </div>
         <h2 class="modal-scheme-title">${fund.name}</h2>
         <div class="modal-scheme-sub">
-          Fund Manager: <strong style="color:var(--text-primary);">${fund.manager}</strong> • Benchmark: <strong style="color:var(--accent-cyan);">${fund.benchmark}</strong>
+          Fund Manager: <strong style="color:var(--text-primary);">${fund.manager || "Not provided"}</strong> • Benchmark: <strong style="color:var(--accent-cyan);">${fund.benchmark || "Not provided"}</strong>
         </div>
       </div>
       <button class="btn" onclick="closeFundModal()" style="border-radius:50%; width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;">✕</button>
@@ -1179,9 +1210,9 @@ window.openFundModal = function(fundId) {
       <div>
         <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Latest Declared NAV</div>
         <div style="font-size:1.65rem; font-weight:800; font-family:var(--font-mono); color:var(--text-primary); margin-top:2px;">
-          ₹${Number(fund.nav).toFixed(2)}
+          ₹${displayMetric(fund.nav, 2)}
           <span style="font-size:0.82rem; font-weight:700; color:${dayChangeVal >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}; margin-left:6px; vertical-align:middle;">
-            ${dayChangeSign}${Number(dayChangeVal).toFixed(2)}% ${dayChangeVal >= 0 ? '🟢' : '🔴'}
+            ${dayChangeVal === null ? "" : `${dayChangeSign}${displayMetric(dayChangeVal, 2, "%")} ${dayChangeVal >= 0 ? "🟢" : "🔴"}`}
           </span>
         </div>
         <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
@@ -1192,7 +1223,7 @@ window.openFundModal = function(fundId) {
       <div>
         <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Fund Size (AUM)</div>
         <div style="font-size:1.3rem; font-weight:800; font-family:var(--font-mono); color:var(--text-primary); margin-top:2px;">
-          ₹${fund.aumCr.toLocaleString("en-IN")} Cr
+          ₹${displayMoney(fund.aumCr)} Cr
         </div>
         <div style="font-size:0.72rem; color:var(--accent-emerald); font-weight:600; margin-top:2px;">
           Tier 1 Asset Size
@@ -1202,8 +1233,8 @@ window.openFundModal = function(fundId) {
       <div>
         <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Expense Ratio</div>
         <div style="font-size:1.3rem; font-weight:800; font-family:var(--font-mono); color:var(--text-primary); margin-top:2px;">
-          ${fund.expenseRatio}%
-          <small style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Reg: ${fund.regularExpenseRatio}%)</small>
+          ${displayMetric(fund.expenseRatio, 2, "%")}
+          <small style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Reg: ${displayMetric(fund.regularExpenseRatio, 2, "%")})</small>
         </div>
         <div style="font-size:0.72rem; color:var(--accent-indigo); font-weight:700; margin-top:2px;">
           Save ${expSavingsPct}%/yr Direct
@@ -1223,7 +1254,7 @@ window.openFundModal = function(fundId) {
 
     <!-- Multi-Horizon Trailing Returns vs Benchmark TRI Grid -->
     <div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-      <h4 style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em;">Trailing Returns vs ${fund.benchmark}</h4>
+      <h4 style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em;">Trailing Returns vs ${fund.benchmark || "benchmark unavailable"}</h4>
       <span style="font-size:0.74rem; color:var(--accent-emerald); font-weight:700;">● Direct Plan Compound Annual Growth (CAGR)</span>
     </div>
 
@@ -1259,7 +1290,7 @@ window.openFundModal = function(fundId) {
           </span>
         </div>
         <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:4px;">
-          ₹10,000 monthly for 10 years • ${formatINR(sipInvested)} contributed. Scenario assumes a constant ${fund.returns.y10}% annual return; historical returns are not forecasts.
+          ₹10,000 monthly for 10 years • ${formatINR(sipInvested)} contributed. Scenario assumes a constant ${displayMetric(fund.returns.y10, 1, "%")} annual return; historical returns are not forecasts.
         </div>
       </div>
 
@@ -1288,27 +1319,27 @@ window.openFundModal = function(fundId) {
     <div class="modal-ratios-grid">
       <div class="modal-ratio-pill">
         <div class="r-lbl">Alpha (Jensen's)</div>
-        <div class="r-val" style="color:var(--accent-emerald);">+${fund.metrics.alpha.toFixed(2)}%</div>
+        <div class="r-val" style="color:var(--accent-emerald);">${displayMetric(fund.metrics?.alpha, 2)}%</div>
         <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">Excess vs Index</div>
       </div>
       <div class="modal-ratio-pill">
         <div class="r-lbl">Beta Volatility</div>
-        <div class="r-val" style="color:${fund.metrics.beta < 1 ? 'var(--accent-emerald)' : 'var(--text-primary)'};">${fund.metrics.beta.toFixed(2)}</div>
-        <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">${fund.metrics.beta < 1 ? 'Low Volatility' : 'Market Sensitivity'}</div>
+        <div class="r-val" style="color:${fund.metrics?.beta < 1 ? 'var(--accent-emerald)' : 'var(--text-primary)'};">${displayMetric(fund.metrics?.beta, 2)}</div>
+        <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">${fund.metrics?.beta < 1 ? 'Low Volatility' : 'Market Sensitivity'}</div>
       </div>
       <div class="modal-ratio-pill">
         <div class="r-lbl">Sharpe Ratio</div>
-        <div class="r-val" style="color:var(--accent-indigo);">${fund.metrics.sharpe.toFixed(2)}</div>
+        <div class="r-val" style="color:var(--accent-indigo);">${displayMetric(fund.metrics?.sharpe, 2)}</div>
         <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">Risk-Adj Return</div>
       </div>
       <div class="modal-ratio-pill">
         <div class="r-lbl">Sortino Ratio</div>
-        <div class="r-val" style="color:var(--accent-emerald);">${fund.metrics.sortino.toFixed(2)}</div>
+        <div class="r-val" style="color:var(--accent-emerald);">${displayMetric(fund.metrics?.sortino, 2)}</div>
         <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">Downside Protection</div>
       </div>
       <div class="modal-ratio-pill">
         <div class="r-lbl">Std Deviation</div>
-        <div class="r-val">${(fund.metrics.stdDev || 14.5).toFixed(1)}%</div>
+        <div class="r-val">${displayMetric(fund.metrics?.stdDev, 1)}%</div>
         <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">Annualized Volatility</div>
       </div>
     </div>
@@ -1439,8 +1470,8 @@ window.exportComparisonCSV = function() {
 
   const headers = ["Fund Name", "Category", "1Y CAGR (%)", "3Y CAGR (%)", "5Y CAGR (%)", "10Y CAGR (%)", "Alpha (%)", "Sharpe Ratio", "Expense Ratio (%)", "AUM (Cr)"];
   const rows = comparedFunds.map(f => [
-    `"${f.name}"`, f.category, f.returns.y1, f.returns.y3, f.returns.y5, f.returns.y10,
-    f.metrics.alpha, f.metrics.sharpe, f.expenseRatio, f.aumCr
+    `"${f.name}"`, f.category, f.returns?.y1, f.returns?.y3, f.returns?.y5, f.returns?.y10,
+    f.metrics?.alpha, f.metrics?.sharpe, f.expenseRatio, f.aumCr
   ]);
 
   const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -1519,9 +1550,9 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
               </div>
               <div class="amc-sub-info">
                 <span>📍 HQ: <strong>${house.hq}</strong></span> • 
-                <span>📅 Est: <strong>${house.established}</strong></span> • 
-                <span>👔 CIO: <strong>${house.cio}</strong></span> •
-                <span>💼 Tracked AUM: <strong style="color:var(--accent-emerald);">₹${house.aumTotalCr.toLocaleString("en-IN")} Cr</strong></span>
+                <span>📅 Est: <strong>${house.established ?? "—"}</strong></span> • 
+                <span>👔 CIO: <strong>${house.cio ?? "—"}</strong></span> •
+                <span>💼 Tracked AUM: <strong style="color:var(--accent-emerald);">₹${displayMoney(house.aumTotalCr)} Cr</strong></span>
               </div>
             </div>
           </div>
@@ -1536,7 +1567,7 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
         <div class="amc-schemes-list">
           ${schemes.map(fund => {
             const isCompared = STATE.compareIds.includes(fund.id);
-            const starsStr = "★".repeat(fund.rating) + "☆".repeat(5 - fund.rating);
+            const starsStr = "★".repeat(safeRating(fund.rating)) + "☆".repeat(5 - safeRating(fund.rating));
             const holdings = fund.holdings || [];
 
             return `
@@ -1551,13 +1582,13 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
                       ${fund.name} <span style="font-size:0.8rem; color:var(--accent-indigo);">↗</span>
                     </h4>
                     <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
-                      Fund Manager: <strong>${fund.manager}</strong> • Benchmark: <strong>${fund.benchmark}</strong>
+                      Fund Manager: <strong>${fund.manager || "Not provided"}</strong> • Benchmark: <strong>${fund.benchmark || "Not provided"}</strong>
                     </div>
                   </div>
 
                   <div class="amc-fund-nav-box">
                     <div class="mono-num" style="font-size:1.15rem; font-weight:800; color:var(--text-primary);">
-                      ₹${Number(fund.nav).toFixed(2)}
+                      ₹${displayMetric(fund.nav, 2)}
                     </div>
                     <div style="font-size:0.74rem; color:${fund.dayChange >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}; font-weight:700;">
                       ${fund.dayChange !== undefined ? `${fund.dayChange >= 0 ? '+' : ''}${Number(fund.dayChange).toFixed(2)}% Today` : 'Live AMFI'}
@@ -1570,40 +1601,38 @@ window.renderFundHousesDirectory = function(filterHouseId = "all") {
                 <div class="amc-fund-metrics-strip">
                   <div class="amc-metric-pill">
                     <span class="lbl">1Y Return</span>
-                    <span class="val ${fund.returns.y1 >= 25 ? 'pos-high' : 'pos-good'}">${fund.returns.y1.toFixed(1)}%</span>
+                    <span class="val ${fund.returns.y1 >= 25 ? 'pos-high' : 'pos-good'}">${displayMetric(fund.returns.y1, 1, "%")}</span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">3Y CAGR</span>
-                    <span class="val ${fund.returns.y3 >= 25 ? 'pos-high' : 'pos-good'}">${fund.returns.y3.toFixed(1)}%</span>
+                    <span class="val ${fund.returns.y3 >= 25 ? 'pos-high' : 'pos-good'}">${displayMetric(fund.returns.y3, 1, "%")}</span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">5Y CAGR</span>
-                    <span class="val ${fund.returns.y5 >= 25 ? 'pos-high' : 'pos-good'}">${fund.returns.y5.toFixed(1)}%</span>
+                    <span class="val ${fund.returns.y5 >= 25 ? 'pos-high' : 'pos-good'}">${displayMetric(fund.returns.y5, 1, "%")}</span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">10Y CAGR</span>
-                    <span class="val pos-good">${fund.returns.y10.toFixed(1)}%</span>
+                    <span class="val pos-good">${displayMetric(fund.returns.y10, 1, "%")}</span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">Expense (Dir/Reg)</span>
-                    <span class="val" style="color:var(--text-secondary);">${fund.expenseRatio}% <small style="color:var(--text-muted); font-size:0.7rem;">(${fund.regularExpenseRatio}%)</small></span>
+                    <span class="val" style="color:var(--text-secondary);">${displayMetric(fund.expenseRatio, 2, "%")} <small style="color:var(--text-muted); font-size:0.7rem;">(${displayMetric(fund.regularExpenseRatio, 2, "%")})</small></span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">AUM (₹ Cr)</span>
-                    <span class="val" style="color:var(--text-secondary);">₹${fund.aumCr.toLocaleString("en-IN")}</span>
+                    <span class="val" style="color:var(--text-secondary);">₹${displayMoney(fund.aumCr)}</span>
                   </div>
                   <div class="amc-metric-pill">
                     <span class="lbl">Alpha (vs TRI)</span>
-                    <span class="val" style="color:var(--accent-emerald); font-weight:800;">+${fund.metrics.alpha.toFixed(2)}%</span>
+                    <span class="val" style="color:var(--accent-emerald); font-weight:800;">${displayMetric(fund.metrics?.alpha, 2)}%</span>
                   </div>
                 </div>
 
                 <!-- Portfolio Holdings Accordion Strip (Hidden by default; click to view) -->
                 <div class="amc-holdings-toggle-strip">
                   <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <button class="btn btn-sm holdings-toggle-btn" id="btn-holdings-toggle-${fund.id}" onclick="toggleFundHoldings('${fund.id}')" data-count="${holdings.length}" title="Click to view portfolio holdings and percentage weights">
-                      <span>📊</span> View Holdings &amp; Exact Weights (${holdings.length} Assets) ▾
-                    </button>
+                    ${holdings.length ? `<button class="btn btn-sm holdings-toggle-btn" id="btn-holdings-toggle-${fund.id}" onclick="toggleFundHoldings('${fund.id}')" data-count="${holdings.length}" title="Click to view portfolio holdings and percentage weights"><span>📊</span> View Holdings &amp; Exact Weights (${holdings.length} Assets) ▾</button>` : `<span class="btn btn-sm" aria-label="Holdings not available">Portfolio holdings not in current dataset</span>`}
                     <button class="btn btn-sm btn-indigo" onclick="openFundModal('${fund.id}')" style="font-size:0.75rem; padding:4px 10px; font-weight:700;" title="Click for deep-dive intelligence modal">
                       🔍 Full Details &amp; Analysis ↗
                     </button>
@@ -1990,7 +2019,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const calcFundSelect = document.getElementById("calcFundSelect");
   if (calcFundSelect) {
     calcFundSelect.innerHTML = window.MUTUAL_FUNDS.map(f =>
-      `<option value="${f.id}">${f.name} (${f.returns.y5}% 5Y CAGR)</option>`
+      `<option value="${f.id}">${f.name} (${displayMetric(f.returns?.y5, 1, "%")} 5Y CAGR)</option>`
     ).join("");
     calcFundSelect.value = STATE.calc.fundId;
     calcFundSelect.addEventListener("change", e => {
